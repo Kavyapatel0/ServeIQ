@@ -2,9 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
+const swaggerSpec = require("./utils/swagger");
 
 const app = express();
 
@@ -16,7 +18,6 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000").
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (Postman, mobile apps, etc.)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -45,6 +46,16 @@ app.get("/api/health", (req, res) => {
     environment: process.env.NODE_ENV || "development",
   });
 });
+
+// ─── API Documentation (Swagger UI) ─────────────────────────────────────────
+// helmet's default CSP blocks Swagger UI's inline assets, so we relax it
+// only for this one route rather than disabling it app-wide.
+app.use(
+  "/api/docs",
+  helmet({ contentSecurityPolicy: false }),
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 
 // ─── API Routes ─────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);

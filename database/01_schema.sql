@@ -33,6 +33,8 @@ CREATE TABLE Users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    deleted_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES Roles(id),
@@ -256,4 +258,18 @@ CREATE TABLE Branch_Menu_Items (
     FOREIGN KEY (menu_item_id) REFERENCES Menu_Items(id),
     INDEX(branch_id),
     INDEX(menu_item_id)
+);
+
+CREATE TABLE Audit_Logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(100) NOT NULL,
+    entity_id BIGINT,
+    details JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(id),
+    INDEX(user_id),
+    INDEX(entity_type),
+    INDEX(created_at)
 );

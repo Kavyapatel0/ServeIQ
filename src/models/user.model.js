@@ -13,12 +13,13 @@ const UserModel = {
         u.email,
         u.password,
         u.branch_id,
+        u.is_active,
         u.created_at,
         r.id AS role_id,
         r.name AS role_name
        FROM Users u
        JOIN Roles r ON u.role_id = r.id
-       WHERE u.email = ?
+       WHERE u.email = ? AND u.deleted_at IS NULL
        LIMIT 1`,
       [email]
     );
@@ -40,12 +41,13 @@ const UserModel = {
         u.name,
         u.email,
         u.branch_id,
+        u.is_active,
         u.created_at,
         r.id AS role_id,
         r.name AS role_name
        FROM Users u
        JOIN Roles r ON u.role_id = r.id
-       WHERE u.id = ?
+       WHERE u.id = ? AND u.deleted_at IS NULL
        LIMIT 1`,
       [id]
     );
@@ -83,6 +85,7 @@ const UserModel = {
         u.name,
         u.email,
         u.branch_id,
+        u.is_active,
         u.created_at,
         r.id AS role_id,
         r.name AS role_name,
@@ -90,7 +93,7 @@ const UserModel = {
       FROM Users u
       JOIN Roles r ON u.role_id = r.id
       LEFT JOIN Branches b ON u.branch_id = b.id
-      WHERE 1=1
+      WHERE u.deleted_at IS NULL
     `;
     const params = [];
 
@@ -144,11 +147,16 @@ const UserModel = {
   },
 
   /**
-   * Delete a user
+   * Soft-delete a user: marks deleted_at + is_active=false instead of
+   * removing the row. Preserves history for audit logs, reports, and
+   * any FK references (e.g. Orders.created_by, Kitchen_Orders.assigned_chef)
+   * that would otherwise break on a hard delete.
    */
   async delete(id) {
     const [result] = await pool.execute(
-      "DELETE FROM Users WHERE id = ?",
+      `UPDATE Users
+       SET deleted_at = CURRENT_TIMESTAMP, is_active = FALSE
+       WHERE id = ? AND deleted_at IS NULL`,
       [id]
     );
     return result.affectedRows > 0;
@@ -158,7 +166,7 @@ const UserModel = {
    * Check if email already exists
    */
   async emailExists(email, excludeId = null) {
-    let query = "SELECT id FROM Users WHERE email = ?";
+    let query = "SELECT id FROM Users WHERE email = ? AND deleted_at IS NULL";
     const params = [email];
     if (excludeId) {
       query += " AND id != ?";

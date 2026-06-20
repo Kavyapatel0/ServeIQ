@@ -1,23 +1,22 @@
 const { validationResult } = require("express-validator");
 const UserModel = require("../models/user.model");
 const AuthService = require("../services/auth.service");
-const { PERMISSIONS } = require("../middlewares/role.middleware");
+const AuditService = require("../services/audit.service");
 
 const UserController = {
   /**
    * GET /api/users
-   * Anyone with users.manage sees everyone; users.view-only sees
-   * their own branch (e.g. a Branch Manager).
+   * req.branchScope is set by enforceBranchScope middleware:
+   *   null  => no restriction (caller has the bypass permission)
+   *   <id>  => locked to that branch, regardless of query params
    */
   async getAll(req, res) {
     try {
       const { branch_id, role_id } = req.query;
-      const canManage = req.user.permissions.includes(PERMISSIONS.USERS_MANAGE);
 
       const filters = {};
-      if (!canManage) {
-        // users.view without users.manage => branch-scoped only
-        filters.branch_id = req.user.branch_id;
+      if (req.branchScope !== null) {
+        filters.branch_id = req.branchScope;
       } else {
         if (branch_id) filters.branch_id = branch_id;
         if (role_id) filters.role_id = role_id;
@@ -40,8 +39,7 @@ const UserController = {
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      const canManage = req.user.permissions.includes(PERMISSIONS.USERS_MANAGE);
-      if (!canManage && user.branch_id !== req.user.branch_id) {
+      if (req.branchScope !== null && user.branch_id !== req.branchScope) {
         return res.status(403).json({ success: false, message: "Access denied" });
       }
 
@@ -82,6 +80,13 @@ const UserController = {
       });
 
       const newUser = await UserModel.findById(newId);
+
+      await AuditService.log(req.user.id, "CREATE", "User", newId, {
+        created_email: email,
+        role_id,
+        branch_id: branch_id || null,
+      });
+
       return res.status(201).json({
         success: true,
         message: "User created successfully",
@@ -129,6 +134,13 @@ const UserController = {
       await UserModel.update(userId, updateData);
       const updated = await UserModel.findById(userId);
 
+      const changedFields = Object.keys(req.body).filter((k) =>
+        ["name", "email", "password", "role_id", "branch_id"].includes(k)
+      );
+      await AuditService.log(req.user.id, "UPDATE", "User", userId, {
+        changed_fields: changedFields,
+      });
+
       return res.status(200).json({
         success: true,
         message: "User updated successfully",
@@ -141,6 +153,8 @@ const UserController = {
 
   /**
    * DELETE /api/users/:id
+   * Soft delete — see UserModel.delete(). The row is preserved for
+   * audit history and any FK references elsewhere in the schema.
    */
   async remove(req, res) {
     try {
@@ -150,10 +164,19 @@ const UserController = {
         return res.status(400).json({ success: false, message: "Cannot delete your own account" });
       }
 
+      const target = await UserModel.findById(userId);
+      if (!target) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
       const deleted = await UserModel.delete(userId);
       if (!deleted) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
+
+      await AuditService.log(req.user.id, "DELETE", "User", userId, {
+        deleted_email: target.email,
+      });
 
       return res.status(200).json({ success: true, message: "User deleted successfully" });
     } catch (err) {
