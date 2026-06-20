@@ -6,7 +6,6 @@ const AuthController = {
    * POST /api/auth/login
    */
   async login(req, res) {
-    // Validation errors from express-validator
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(422).json({
@@ -35,7 +34,8 @@ const AuthController = {
 
   /**
    * GET /api/auth/me
-   * Returns the currently authenticated user from the JWT payload
+   * Returns the currently authenticated user, including their
+   * current permission_keys (useful for the frontend to show/hide UI).
    */
   async me(req, res) {
     try {
@@ -47,6 +47,7 @@ const AuthController = {
           email: req.user.email,
           role: req.user.role,
           branch_id: req.user.branch_id,
+          permissions: req.user.permissions,
         },
       });
     } catch (err) {
@@ -60,7 +61,6 @@ const AuthController = {
   /**
    * POST /api/auth/logout
    * JWT is stateless — client drops the token.
-   * This endpoint exists to give a clean API contract.
    */
   logout(req, res) {
     return res.status(200).json({

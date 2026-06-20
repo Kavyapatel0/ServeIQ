@@ -2,67 +2,94 @@ const { pool } = require("../config/db");
 
 const UserModel = {
   /**
-   * Find a user by email (includes role name via JOIN)
+   * Find a user by email, including role name and full permission list.
+   * Permissions are aggregated via Role_Permissions -> Permissions.
    */
   async findByEmail(email) {
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
         u.id,
         u.name,
         u.email,
         u.password,
         u.branch_id,
         u.created_at,
-        r.id   AS role_id,
-        r.role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
+        r.id AS role_id,
+        r.name AS role_name
+       FROM Users u
+       JOIN Roles r ON u.role_id = r.id
        WHERE u.email = ?
        LIMIT 1`,
       [email]
     );
-    return rows[0] || null;
+
+    const user = rows[0];
+    if (!user) return null;
+
+    user.permissions = await this.getPermissionsForRole(user.role_id);
+    return user;
   },
 
   /**
-   * Find a user by ID (excludes password)
+   * Find a user by ID, including role name and full permission list.
    */
   async findById(id) {
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
         u.id,
         u.name,
         u.email,
         u.branch_id,
         u.created_at,
-        r.id   AS role_id,
-        r.role_name
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
+        r.id AS role_id,
+        r.name AS role_name
+       FROM Users u
+       JOIN Roles r ON u.role_id = r.id
        WHERE u.id = ?
        LIMIT 1`,
       [id]
     );
-    return rows[0] || null;
+
+    const user = rows[0];
+    if (!user) return null;
+
+    user.permissions = await this.getPermissionsForRole(user.role_id);
+    return user;
   },
 
   /**
-   * Get all users (excludes passwords)
+   * Get all permission_keys granted to a role via Role_Permissions.
+   * Returns a flat array of strings, e.g. ["orders.create", "orders.view"]
+   */
+  async getPermissionsForRole(roleId) {
+    const [rows] = await pool.execute(
+      `SELECT p.permission_key
+       FROM Role_Permissions rp
+       JOIN Permissions p ON rp.permission_id = p.id
+       WHERE rp.role_id = ?`,
+      [roleId]
+    );
+    return rows.map((r) => r.permission_key);
+  },
+
+  /**
+   * Get all users (excludes passwords). Does not include permissions
+   * to keep list responses light — fetch findById() for full detail.
    */
   async findAll({ branch_id, role_id } = {}) {
     let query = `
-      SELECT 
+      SELECT
         u.id,
         u.name,
         u.email,
         u.branch_id,
         u.created_at,
-        r.id   AS role_id,
-        r.role_name,
+        r.id AS role_id,
+        r.name AS role_name,
         b.name AS branch_name
-      FROM users u
-      JOIN roles r ON u.role_id = r.id
-      LEFT JOIN branches b ON u.branch_id = b.id
+      FROM Users u
+      JOIN Roles r ON u.role_id = r.id
+      LEFT JOIN Branches b ON u.branch_id = b.id
       WHERE 1=1
     `;
     const params = [];
@@ -86,7 +113,7 @@ const UserModel = {
    */
   async create({ name, email, password, role_id, branch_id }) {
     const [result] = await pool.execute(
-      `INSERT INTO users (name, email, password, role_id, branch_id)
+      `INSERT INTO Users (name, email, password, role_id, branch_id)
        VALUES (?, ?, ?, ?, ?)`,
       [name, email, password, role_id, branch_id || null]
     );
@@ -110,18 +137,18 @@ const UserModel = {
 
     params.push(id);
     const [result] = await pool.execute(
-      `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+      `UPDATE Users SET ${fields.join(", ")} WHERE id = ?`,
       params
     );
     return result.affectedRows > 0;
   },
 
   /**
-   * Soft-delete by marking role or just delete
+   * Delete a user
    */
   async delete(id) {
     const [result] = await pool.execute(
-      "DELETE FROM users WHERE id = ?",
+      "DELETE FROM Users WHERE id = ?",
       [id]
     );
     return result.affectedRows > 0;
@@ -131,7 +158,7 @@ const UserModel = {
    * Check if email already exists
    */
   async emailExists(email, excludeId = null) {
-    let query = "SELECT id FROM users WHERE email = ?";
+    let query = "SELECT id FROM Users WHERE email = ?";
     const params = [email];
     if (excludeId) {
       query += " AND id != ?";

@@ -1,18 +1,22 @@
 const { validationResult } = require("express-validator");
 const UserModel = require("../models/user.model");
 const AuthService = require("../services/auth.service");
+const { PERMISSIONS } = require("../middlewares/role.middleware");
 
 const UserController = {
   /**
    * GET /api/users
+   * Anyone with users.manage sees everyone; users.view-only sees
+   * their own branch (e.g. a Branch Manager).
    */
   async getAll(req, res) {
     try {
       const { branch_id, role_id } = req.query;
+      const canManage = req.user.permissions.includes(PERMISSIONS.USERS_MANAGE);
 
-      // Branch Manager can only see users in their own branch
       const filters = {};
-      if (req.user.role === "Branch Manager") {
+      if (!canManage) {
+        // users.view without users.manage => branch-scoped only
         filters.branch_id = req.user.branch_id;
       } else {
         if (branch_id) filters.branch_id = branch_id;
@@ -36,11 +40,8 @@ const UserController = {
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      // Branch manager cannot view users outside their branch
-      if (
-        req.user.role === "Branch Manager" &&
-        user.branch_id !== req.user.branch_id
-      ) {
+      const canManage = req.user.permissions.includes(PERMISSIONS.USERS_MANAGE);
+      if (!canManage && user.branch_id !== req.user.branch_id) {
         return res.status(403).json({ success: false, message: "Access denied" });
       }
 
@@ -113,7 +114,6 @@ const UserController = {
 
       const { name, email, password, role_id, branch_id } = req.body;
 
-      // Check email uniqueness if being changed
       if (email && email !== existing.email) {
         const taken = await UserModel.emailExists(email, userId);
         if (taken) {
@@ -146,7 +146,6 @@ const UserController = {
     try {
       const userId = req.params.id;
 
-      // Prevent self-deletion
       if (Number(userId) === req.user.id) {
         return res.status(400).json({ success: false, message: "Cannot delete your own account" });
       }
