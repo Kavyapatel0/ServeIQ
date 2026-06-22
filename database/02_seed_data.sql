@@ -166,3 +166,19 @@ INSERT INTO Taxes (id, tax_name, percentage) VALUES
 INSERT INTO Coupons (id, code, discount, discount_type, valid_from, valid_to, minimum_order_amount, max_usage) VALUES
   (1, 'WELCOME10', 10.00, 'PERCENTAGE', '2026-01-01', '2026-12-31', 200.00, 100),
   (2, 'FLAT50',    50.00, 'FIXED',      '2026-01-01', '2026-12-31', 300.00, 50);
+  
+-- Customers
+
+INSERT INTO Customers
+(id, name, email, phone, loyalty_points)
+VALUES
+(1, 'John Doe', 'john.doe@example.com', '9876543210', 100),
+(2, 'Jane Smith', 'jane.smith@example.com', '9876543211', 150),
+(3, 'Rahul Patel', 'rahul.patel@example.com', '9876543212', 75),
+(4, 'Neha Shah', 'neha.shah@example.com', '9876543213', 200),
+(5, 'Amit Mehta', 'amit.mehta@example.com', '9876543214', 50),
+(6, 'Priya Desai', 'priya.desai@example.com', '9876543215', 120),
+(7, 'Karan Joshi', 'karan.joshi@example.com', '9876543216', 80),
+(8, 'Sneha Trivedi', 'sneha.trivedi@example.com', '9876543217', 160),
+(9, 'Vikas Sharma', 'vikas.sharma@example.com', '9876543218', 30),
+(10, 'Riya Kapoor', 'riya.kapoor@example.com', '9876543219', 90);

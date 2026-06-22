@@ -1,11 +1,12 @@
 const { validationResult } = require("express-validator");
 const AuthService = require("../services/auth.service");
+const AuditService = require("../services/audit.service");
 
 const AuthController = {
   /**
    * POST /api/auth/login
    */
-  async login(req, res) {
+async login(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(422).json({
@@ -19,18 +20,29 @@ const AuthController = {
       const { email, password } = req.body;
       const result = await AuthService.login(email, password);
 
-      return res.status(200).json({
-        success: true,
-        message: "Login successful",
-        data: result,
-      });
-    } catch (err) {
+      await AuditService.log(
+        result.user.id,
+        "LOGIN",
+        "User",
+        result.user.id,
+    {
+       email: result.user.email,
+    }
+);
+
+     return res.status(200).json({
+     success: true,
+     message: "Login successful",
+     data: result,
+   });
+} 
+catch (err) {
       return res.status(err.status || 500).json({
         success: false,
         message: err.message || "Internal server error",
       });
     }
-  },
+},
 
   /**
    * GET /api/auth/me
@@ -62,12 +74,27 @@ const AuthController = {
    * POST /api/auth/logout
    * JWT is stateless — client drops the token.
    */
-  logout(req, res) {
+async logout(req, res) {
+  try {
+    await AuditService.log(
+      req.user.id,
+      "LOGOUT",
+      "User",
+      req.user.id,
+      {}
+    );
+
     return res.status(200).json({
       success: true,
       message: "Logged out successfully",
     });
-  },
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+   }
+ }
 };
 
 module.exports = AuthController;

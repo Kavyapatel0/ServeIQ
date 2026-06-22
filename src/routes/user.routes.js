@@ -4,7 +4,7 @@ const router = express.Router();
 const UserController = require("../controllers/user.controller");
 const { authenticate } = require("../middlewares/auth.middleware");
 const { authorize, PERMISSIONS } = require("../middlewares/role.middleware");
-const { enforceBranchScope } = require("../middlewares/branch-scope.middleware");
+const { enforceBranchScope } = require("../middlewares/Branch-scope.middleware");
 const validators = require("../middlewares/validators");
 
 // All user routes require authentication
@@ -41,9 +41,11 @@ router.get(
 
 /**
  * @openapi
+/**
+ * @openapi
  * /api/users/{id}:
- *   get:
- *     summary: Get a single user by ID
+ *   put:
+ *     summary: Update an existing user
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -51,11 +53,32 @@ router.get(
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               role_id:
+ *                 type: integer
+ *               branch_id:
+ *                 type: integer
  *     responses:
- *       200: { description: User found }
- *       403: { description: Forbidden — different branch }
- *       404: { description: User not found }
+ *       200:
+ *         description: User updated
+ *       404:
+ *         description: User not found
+ *       409:
+ *         description: Email already in use
  */
 router.get(
   "/:id",
