@@ -101,6 +101,8 @@ const PERMISSIONS = {
   COUPONS_MANAGE: "coupons.manage",
 
   ANALYTICS_VIEW: "analytics.view",
+
+  TABLES_VIEW: "tables.view",
 };
 
 /**

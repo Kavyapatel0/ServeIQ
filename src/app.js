@@ -4,9 +4,13 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
-const authRoutes = require("./routes/auth.routes");
-const userRoutes = require("./routes/user.routes");
-const swaggerSpec = require("./utils/swagger");
+const authRoutes    = require("./routes/auth.routes");
+const userRoutes    = require("./routes/user.routes");
+const tableRoutes   = require("./routes/table.routes");
+const menuRoutes    = require("./routes/menu.routes");
+const orderRoutes   = require("./routes/order.routes");
+const paymentRoutes = require("./routes/payment.routes");
+const swaggerSpec   = require("./utils/swagger");
 
 const app = express();
 
@@ -58,8 +62,14 @@ app.use(
 );
 
 // ─── API Routes ─────────────────────────────────────────────────────────────
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api/auth",     authRoutes);
+app.use("/api/users",    userRoutes);
+
+// ─── POS V1 Routes ───────────────────────────────────────────────────────────
+app.use("/api/tables",   tableRoutes);
+app.use("/api/menu",     menuRoutes);
+app.use("/api/orders",   orderRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 app.use((req, res) => {

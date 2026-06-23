@@ -40,11 +40,12 @@ INSERT INTO Permissions (id, name, permission_key) VALUES
   (16, 'Manage Customers',          'customers.manage'),
   (17, 'Manage Loyalty Points',     'loyalty.manage'),
   (18, 'Manage Coupons',            'coupons.manage'),
-  (19, 'View Analytics',            'analytics.view');
+  (19, 'View Analytics',            'analytics.view'),
+  (20, 'View Tables',               'tables.view');
 
 -- ─── Role ↔ Permission Mapping ───────────────────────────────
 
--- Super Admin: every permission (1–19)
+-- Super Admin: every permission (1–20)
 INSERT INTO Role_Permissions (role_id, permission_id)
 SELECT 1, id FROM Permissions;
 
@@ -65,7 +66,8 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (2, 16), -- customers.manage
   (2, 17), -- loyalty.manage
   (2, 18), -- coupons.manage
-  (2, 19); -- analytics.view
+  (2, 19), -- analytics.view
+  (2, 20); -- tables.view
 
 -- Cashier: orders, payments, customers/loyalty/coupons at the till
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
@@ -75,7 +77,8 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (3, 9),  -- payments.process
   (3, 16), -- customers.manage
   (3, 17), -- loyalty.manage
-  (3, 18); -- coupons.manage
+  (3, 18), -- coupons.manage
+  (3, 20); -- tables.view
 
 -- Chef: kitchen queue + read-only inventory
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
@@ -87,7 +90,8 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (5, 5),  -- orders.create
   (5, 6),  -- orders.view
-  (5, 7);  -- orders.update_status
+  (5, 7),  -- orders.update_status
+  (5, 20); -- tables.view
 
 -- ─── Branches ────────────────────────────────────────────────
 INSERT INTO Branches (id, name, location) VALUES
@@ -105,11 +109,13 @@ INSERT INTO Users (id, role_id, branch_id, name, email, password) VALUES
   (5, 5, 1,    'Sneha Patel',   'waiter@branch1.com',     '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi'); -- waiter123
 
 -- ─── Restaurant Tables ───────────────────────────────────────
-INSERT INTO Restaurant_Tables (id, table_number, capacity, branch_id) VALUES
-  (1, 1, 2, 1),
-  (2, 2, 4, 1),
-  (3, 3, 6, 1),
-  (4, 1, 4, 2);
+INSERT INTO Restaurant_Tables (id, table_number, capacity, branch_id, status) VALUES
+  (1, 'T1', 2, 1, 'AVAILABLE'),
+  (2, 'T2', 4, 1, 'AVAILABLE'),
+  (3, 'T3', 6, 1, 'AVAILABLE'),
+  (4, 'T1', 4, 2, 'AVAILABLE'),
+  (5, 'T4', 8, 1, 'AVAILABLE'),
+  (6, 'T2', 2, 2, 'AVAILABLE');
 
 -- ─── Menu Categories ─────────────────────────────────────────
 INSERT INTO Menu_Categories (id, name) VALUES

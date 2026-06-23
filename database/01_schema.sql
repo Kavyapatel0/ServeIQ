@@ -54,10 +54,15 @@ CREATE TABLE Customers (
 
 CREATE TABLE Restaurant_Tables (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    table_number INT NOT NULL,
+    table_number VARCHAR(20) NOT NULL,
     capacity INT NOT NULL,
-    branch_id BIGINT,
-    FOREIGN KEY (branch_id) REFERENCES Branches(id)
+    branch_id BIGINT NOT NULL,
+    status ENUM('AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING') DEFAULT 'AVAILABLE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (branch_id) REFERENCES Branches(id),
+    INDEX (branch_id),
+    INDEX (status)
 );
 
 CREATE TABLE Orders (
