@@ -201,6 +201,28 @@ const OrderModel = {
     );
     return result.affectedRows > 0;
   },
+
+  /**
+   * Update quantity of an existing order item and recalculate its total_price.
+   * Fetches unit_price from DB — never trusts the client value.
+   * Call recalculateTotals() on the order after this.
+   */
+  async updateItemQuantity(itemId, orderId, quantity) {
+    const [rows] = await pool.execute(
+      `SELECT unit_price FROM Order_Items WHERE id = ? AND order_id = ? LIMIT 1`,
+      [itemId, orderId]
+    );
+    if (!rows[0]) return false;
+
+    const unit_price = parseFloat(rows[0].unit_price);
+    const total_price = parseFloat((unit_price * quantity).toFixed(2));
+
+    const [result] = await pool.execute(
+      `UPDATE Order_Items SET quantity = ?, total_price = ? WHERE id = ? AND order_id = ?`,
+      [quantity, total_price, itemId, orderId]
+    );
+    return result.affectedRows > 0;
+  },
 };
 
 module.exports = { OrderModel, ORDER_STATUS };

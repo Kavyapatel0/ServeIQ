@@ -79,13 +79,14 @@ const MenuController = {
    */
   async getAllItems(req, res) {
     try {
-      const { category_id, is_available } = req.query;
+      const { category_id, is_available, search } = req.query;
       const branch_id = req.branchScope ?? (req.query.branch_id ? parseInt(req.query.branch_id) : undefined);
 
       const items = await MenuModel.findAllItems({
         category_id: category_id ? parseInt(category_id) : undefined,
         branch_id,
         is_available: is_available !== undefined ? is_available === "true" : undefined,
+        search,
       });
 
       return res.status(200).json({ success: true, count: items.length, data: items });
@@ -156,6 +157,34 @@ const MenuController = {
     } catch (err) {
       console.error("MenuController.updateItem:", err);
       return res.status(500).json({ success: false, message: "Failed to update menu item." });
+    }
+  },
+
+  /**
+   * PATCH /api/menu/items/:id/toggle-availability
+   * Flips is_available without touching any other field.
+   */
+  async toggleAvailability(req, res) {
+    try {
+      const id = parseInt(req.params.id);
+      const newState = await MenuModel.toggleAvailability(id);
+
+      if (newState === null) {
+        return res.status(404).json({ success: false, message: "Menu item not found." });
+      }
+
+      await AuditService.log(req.user.id, "MENU_ITEM_AVAILABILITY_TOGGLED", "Menu_Items", id, {
+        is_available: newState,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Item is now ${newState ? "available" : "unavailable"}.`,
+        data: { id, is_available: newState },
+      });
+    } catch (err) {
+      console.error("MenuController.toggleAvailability:", err);
+      return res.status(500).json({ success: false, message: "Failed to toggle availability." });
     }
   },
 

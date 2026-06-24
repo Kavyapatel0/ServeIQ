@@ -48,7 +48,7 @@ const MenuModel = {
    * Find menu items with optional filters.
    * Joins Branch_Menu_Items so we can filter by branch availability.
    */
-  async findAllItems({ category_id, branch_id, is_available } = {}) {
+  async findAllItems({ category_id, branch_id, is_available, search } = {}) {
     let query = `
       SELECT
         mi.id,
@@ -88,6 +88,12 @@ const MenuModel = {
     }
     if (branch_id) {
       query += " AND bmi.is_available = TRUE";
+    }
+    // Partial match on name or description
+    if (search && search.trim()) {
+      query += " AND (mi.name LIKE ? OR mi.description LIKE ?)";
+      const term = `%${search.trim()}%`;
+      params.push(term, term);
     }
 
     query += " ORDER BY mc.name, mi.name";
@@ -161,6 +167,25 @@ const MenuModel = {
       params
     );
     return result.affectedRows > 0;
+  },
+
+  /**
+   * Toggle is_available for a single item.
+   * Returns the new boolean state, or null if item not found.
+   */
+  async toggleAvailability(id) {
+    const [rows] = await pool.execute(
+      `SELECT is_available FROM Menu_Items WHERE id = ? AND is_active = TRUE LIMIT 1`,
+      [id]
+    );
+    if (!rows[0]) return null;
+
+    const newState = !rows[0].is_available;
+    await pool.execute(
+      `UPDATE Menu_Items SET is_available = ? WHERE id = ?`,
+      [newState, id]
+    );
+    return newState;
   },
 
   /**

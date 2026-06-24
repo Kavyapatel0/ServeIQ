@@ -158,6 +158,60 @@ const OrderController = {
   },
 
   /**
+   * PATCH /api/orders/:id/items/:itemId
+   * Update quantity of a single order item. Recalculates bill after.
+   * Body: { quantity }
+   */
+  async updateItemQuantity(req, res) {
+    try {
+      const order_id = parseInt(req.params.id);
+      const itemId   = parseInt(req.params.itemId);
+      const quantity = parseInt(req.body.quantity);
+
+      if (!quantity || quantity < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "quantity must be a positive integer. To remove an item use DELETE.",
+        });
+      }
+
+      const order = await OrderModel.findById(order_id);
+      if (!order) return res.status(404).json({ success: false, message: "Order not found." });
+      if (req.branchScope && order.branch_id !== req.branchScope) {
+        return res.status(403).json({ success: false, message: "Access denied." });
+      }
+      if (order.status !== ORDER_STATUS.CREATED) {
+        return res.status(409).json({
+          success: false,
+          message: `Cannot edit items on an order with status: ${order.status}.`,
+        });
+      }
+
+      const updated = await OrderModel.updateItemQuantity(itemId, order_id, quantity);
+      if (!updated) {
+        return res.status(404).json({ success: false, message: "Order item not found." });
+      }
+
+      const totals = await OrderModel.recalculateTotals(order_id, parseFloat(order.discount_amount));
+
+      await AuditService.log(req.user.id, "ITEM_QUANTITY_UPDATED", "Order", order_id, {
+        itemId,
+        quantity,
+      });
+
+      const items = await OrderModel.findItemsByOrderId(order_id);
+      return res.status(200).json({
+        success: true,
+        message: "Item quantity updated.",
+        data: { items, totals },
+      });
+    } catch (err) {
+      console.error("OrderController.updateItemQuantity:", err);
+      return res.status(500).json({ success: false, message: "Failed to update item quantity." });
+    }
+  },
+
+  /**
    * DELETE /api/orders/:id/items/:itemId
    * Remove a single item from a CREATED order and recalculate.
    */

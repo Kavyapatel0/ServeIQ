@@ -6,6 +6,7 @@
  * GET    /api/orders/:id                  — Get order        (orders.view)
  * POST   /api/orders/:id/items            — Add item         (orders.create)
  * GET    /api/orders/:id/items            — Get items        (orders.view)
+ * PATCH  /api/orders/:id/items/:itemId   — Update item qty  (orders.create)
  * DELETE /api/orders/:id/items/:itemId    — Remove item      (orders.create)
  * POST   /api/orders/:id/send-to-kitchen  — Send to kitchen  (orders.create)
  * PATCH  /api/orders/:id/status           — Update status    (orders.update_status)
@@ -78,6 +79,15 @@ router.get(
   authorize(PERMISSIONS.ORDERS_VIEW),
   enforceBranchScope(PERMISSIONS.BRANCHES_MANAGE),
   OrderController.getItems
+);
+
+// Update item quantity
+router.patch(
+  "/:id/items/:itemId",
+  authenticate,
+  authorize(PERMISSIONS.ORDERS_CREATE),
+  enforceBranchScope(PERMISSIONS.BRANCHES_MANAGE),
+  OrderController.updateItemQuantity
 );
 
 // Remove item from order

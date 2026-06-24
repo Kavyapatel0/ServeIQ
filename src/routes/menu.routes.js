@@ -9,9 +9,11 @@
  *
  * Items:
  *   GET    /api/menu/items              — All authenticated users
+ *                                         ?search=pizza  ?category_id=1  ?is_available=true
  *   GET    /api/menu/items/:id          — All authenticated users
  *   POST   /api/menu/items              — menu.manage only
  *   PUT    /api/menu/items/:id          — menu.manage only
+ *   PATCH  /api/menu/items/:id/toggle-availability — menu.manage only
  *   DELETE /api/menu/items/:id          — menu.manage only
  */
 
@@ -89,6 +91,15 @@ router.put(
   validators.updateMenuItem,
   validate,
   MenuController.updateItem
+);
+
+// PATCH /api/menu/items/:id/toggle-availability
+// Must be declared before /items/:id DELETE to avoid route conflicts
+router.patch(
+  "/items/:id/toggle-availability",
+  authenticate,
+  authorize(PERMISSIONS.MENU_MANAGE),
+  MenuController.toggleAvailability
 );
 
 router.delete(
