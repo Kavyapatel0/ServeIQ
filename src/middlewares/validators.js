@@ -160,6 +160,105 @@ const validators = {
       .isIn(["CASH", "CARD", "UPI", "WALLET"])
       .withMessage("payment_method must be CASH, CARD, UPI, or WALLET"),
   ],
+  // ─── Ingredient validators ───────────────────────────────────
+
+  createIngredient: [
+    body("name")
+      .trim()
+      .notEmpty().withMessage("name is required")
+      .isLength({ min: 2, max: 100 }).withMessage("name must be 2–100 characters"),
+    body("unit")
+      .trim()
+      .notEmpty().withMessage("unit is required")
+      .isLength({ max: 50 }).withMessage("unit must be ≤ 50 characters"),
+    body("current_stock")
+      .optional()
+      .isFloat({ min: 0 }).withMessage("current_stock must be a non-negative number"),
+    body("minimum_stock")
+      .notEmpty().withMessage("minimum_stock is required")
+      .isFloat({ min: 0 }).withMessage("minimum_stock must be a non-negative number"),
+    body("cost_price")
+      .notEmpty().withMessage("cost_price is required")
+      .isFloat({ min: 0 }).withMessage("cost_price must be a non-negative number"),
+    body("supplier_id")
+      .optional({ nullable: true })
+      .isInt({ min: 1 }).withMessage("supplier_id must be a positive integer"),
+  ],
+
+  updateIngredient: [
+    param("id").isInt({ min: 1 }).withMessage("Ingredient ID must be a positive integer"),
+    body("name").optional().trim().isLength({ min: 2, max: 100 }),
+    body("unit").optional().trim().isLength({ max: 50 }),
+    body("minimum_stock").optional().isFloat({ min: 0 }),
+    body("cost_price").optional().isFloat({ min: 0 }),
+    body("supplier_id").optional({ nullable: true }).isInt({ min: 1 }),
+  ],
+
+  // ─── Supplier validators ─────────────────────────────────────
+
+  createSupplier: [
+    body("name")
+      .trim()
+      .notEmpty().withMessage("name is required")
+      .isLength({ min: 2, max: 100 }).withMessage("name must be 2–100 characters"),
+    body("email").optional({ nullable: true }).isEmail().withMessage("Enter a valid email address"),
+    body("phone").optional({ nullable: true }).isLength({ max: 20 }),
+    body("gst_number").optional({ nullable: true }).isLength({ max: 20 }),
+  ],
+
+  updateSupplier: [
+    param("id").isInt({ min: 1 }).withMessage("Supplier ID must be a positive integer"),
+    body("name").optional().trim().isLength({ min: 2, max: 100 }),
+    body("email").optional({ nullable: true }).isEmail(),
+    body("phone").optional({ nullable: true }).isLength({ max: 20 }),
+  ],
+
+  // ─── Purchase order validators ────────────────────────────────
+
+  createPurchaseOrder: [
+    body("supplier_id")
+      .notEmpty().withMessage("supplier_id is required")
+      .isInt({ min: 1 }).withMessage("supplier_id must be a positive integer"),
+  ],
+
+  addPurchaseOrderItem: [
+    param("id").isInt({ min: 1 }).withMessage("Purchase order ID must be a positive integer"),
+    body("ingredient_id")
+      .notEmpty().withMessage("ingredient_id is required")
+      .isInt({ min: 1 }).withMessage("ingredient_id must be a positive integer"),
+    body("quantity")
+      .notEmpty().withMessage("quantity is required")
+      .isFloat({ min: 0.01 }).withMessage("quantity must be greater than 0"),
+    body("unit_price")
+      .notEmpty().withMessage("unit_price is required")
+      .isFloat({ min: 0 }).withMessage("unit_price must be a non-negative number"),
+  ],
+
+  updatePurchaseOrderItem: [
+    param("id").isInt({ min: 1 }).withMessage("Purchase order ID must be a positive integer"),
+    param("itemId").isInt({ min: 1 }).withMessage("Item ID must be a positive integer"),
+    body("quantity")
+      .notEmpty().withMessage("quantity is required")
+      .isFloat({ min: 0.01 }).withMessage("quantity must be greater than 0"),
+    body("unit_price")
+      .notEmpty().withMessage("unit_price is required")
+      .isFloat({ min: 0 }).withMessage("unit_price must be a non-negative number"),
+  ],
+
+  // ─── Inventory adjustment validator ───────────────────────────
+
+  adjustStock: [
+    body("ingredient_id")
+      .notEmpty().withMessage("ingredient_id is required")
+      .isInt({ min: 1 }).withMessage("ingredient_id must be a positive integer"),
+    body("new_stock")
+      .notEmpty().withMessage("new_stock is required")
+      .isFloat({ min: 0 }).withMessage("new_stock must be a non-negative number"),
+    body("reason")
+      .optional()
+      .isString()
+      .isLength({ max: 255 }).withMessage("reason must be ≤ 255 characters"),
+  ],
 };
 
 module.exports = validators;

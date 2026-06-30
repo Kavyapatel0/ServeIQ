@@ -4,13 +4,17 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
-const authRoutes    = require("./routes/auth.routes");
-const userRoutes    = require("./routes/user.routes");
-const tableRoutes   = require("./routes/table.routes");
-const menuRoutes    = require("./routes/menu.routes");
-const orderRoutes   = require("./routes/order.routes");
-const paymentRoutes = require("./routes/payment.routes");
-const swaggerSpec   = require("./utils/swagger");
+const authRoutes       = require("./routes/auth.routes");
+const userRoutes       = require("./routes/user.routes");
+const tableRoutes      = require("./routes/table.routes");
+const menuRoutes       = require("./routes/menu.routes");
+const orderRoutes      = require("./routes/order.routes");
+const paymentRoutes    = require("./routes/payment.routes");
+const ingredientRoutes = require("./routes/ingredient.routes");
+const supplierRoutes   = require("./routes/supplier.routes");
+const purchaseRoutes   = require("./routes/purchase.routes");
+const inventoryRoutes  = require("./routes/inventory.routes");
+const swaggerSpec      = require("./utils/swagger");
 
 const app = express();
 
@@ -70,6 +74,12 @@ app.use("/api/tables",   tableRoutes);
 app.use("/api/menu",     menuRoutes);
 app.use("/api/orders",   orderRoutes);
 app.use("/api/payments", paymentRoutes);
+
+// ─── Inventory V1 Routes ─────────────────────────────────────────────────────
+app.use("/api/ingredients",     ingredientRoutes);
+app.use("/api/suppliers",       supplierRoutes);
+app.use("/api/purchase-orders", purchaseRoutes);
+app.use("/api/inventory",       inventoryRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 app.use((req, res) => {

@@ -15,7 +15,8 @@ INSERT INTO Roles (id, name) VALUES
   (2, 'Branch Manager'),
   (3, 'Cashier'),
   (4, 'Chef'),
-  (5, 'Waiter');
+  (5, 'Waiter'),
+  (6, 'Inventory Manager');
 
 -- ─── Permissions ─────────────────────────────────────────────
 -- permission_key is what the code checks (authorize("orders.create"))
@@ -41,7 +42,11 @@ INSERT INTO Permissions (id, name, permission_key) VALUES
   (17, 'Manage Loyalty Points',     'loyalty.manage'),
   (18, 'Manage Coupons',            'coupons.manage'),
   (19, 'View Analytics',            'analytics.view'),
-  (20, 'View Tables',               'tables.view');
+  (20, 'View Tables',               'tables.view'),
+  (21, 'View Suppliers',            'supplier.view'),
+  (22, 'Manage Suppliers',          'supplier.manage'),
+  (23, 'View Purchase Orders',      'purchase.view'),
+  (24, 'Manage Purchase Orders',    'purchase.manage');
 
 -- ─── Role ↔ Permission Mapping ───────────────────────────────
 
@@ -67,7 +72,11 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (2, 17), -- loyalty.manage
   (2, 18), -- coupons.manage
   (2, 19), -- analytics.view
-  (2, 20); -- tables.view
+  (2, 20), -- tables.view
+  (2, 21), -- supplier.view
+  (2, 22), -- supplier.manage
+  (2, 23), -- purchase.view
+  (2, 24); -- purchase.manage
 
 -- Cashier: orders, payments, customers/loyalty/coupons at the till
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
@@ -78,7 +87,8 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (3, 16), -- customers.manage
   (3, 17), -- loyalty.manage
   (3, 18), -- coupons.manage
-  (3, 20); -- tables.view
+  (3, 20), -- tables.view
+  (3, 13); -- inventory.view (optional read-only)
 
 -- Chef: kitchen queue + read-only inventory
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
@@ -93,6 +103,15 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (5, 7),  -- orders.update_status
   (5, 20); -- tables.view
 
+-- Inventory Manager: full inventory module, no POS/orders access
+INSERT INTO Role_Permissions (role_id, permission_id) VALUES
+  (6, 13), -- inventory.view
+  (6, 14), -- inventory.manage
+  (6, 21), -- supplier.view
+  (6, 22), -- supplier.manage
+  (6, 23), -- purchase.view
+  (6, 24); -- purchase.manage
+
 -- ─── Branches ────────────────────────────────────────────────
 INSERT INTO Branches (id, name, location) VALUES
   (1, 'Downtown Branch', 'SG Highway, Ahmedabad'),
@@ -106,7 +125,8 @@ INSERT INTO Users (id, role_id, branch_id, name, email, password) VALUES
   (2, 2, 1,    'Priya Sharma',  'manager@branch1.com',    '$2b$12$ZtJjPZ2igUVlUXOl5ryG..0Hug7jzED1MKAGJzmax9pwNfb.0r6q2'), -- manager123
   (3, 3, 1,    'Rahul Verma',   'cashier@branch1.com',    '$2b$12$Pf.ImIAoNA4hYluwMinGM.dkOwrx0sUscTbIY6L828x6cSMYb00LO'), -- cashier123
   (4, 4, 1,    'Chef Anand',    'chef@branch1.com',       '$2b$12$L/IDksHKqHe9AdEDb4bwse.KAFuslRicPfWKkXt7otsriH9ZISyb.'), -- chef123
-  (5, 5, 1,    'Sneha Patel',   'waiter@branch1.com',     '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi'); -- waiter123
+  (5, 5, 1,    'Sneha Patel',   'waiter@branch1.com',     '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi'), -- waiter123
+  (6, 6, 1,    'Kabir Mehta',   'inventory@branch1.com',  '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi'); -- waiter123
 
 -- ─── Restaurant Tables ───────────────────────────────────────
 INSERT INTO Restaurant_Tables (id, table_number, capacity, branch_id, status) VALUES
@@ -137,13 +157,18 @@ INSERT INTO Branch_Menu_Items (branch_id, menu_item_id, is_available) VALUES
   (1, 1, TRUE), (1, 2, TRUE), (1, 3, TRUE), (1, 4, TRUE), (1, 5, TRUE),
   (2, 1, TRUE), (2, 2, TRUE), (2, 3, TRUE), (2, 4, TRUE), (2, 5, FALSE);
 
+-- ─── Suppliers ───────────────────────────────────────────────
+INSERT INTO Suppliers (id, name, contact_person, phone, email, gst_number, address, is_active) VALUES
+  (1, 'Fresh Farms Pvt Ltd',  'Suresh Patel', '9988776655', 'contact@freshfarms.com', '24AAAAA0000A1Z5', 'Plot 12, APMC Market, Ahmedabad', TRUE),
+  (2, 'Dairy Best Suppliers', 'Meena Shah',   '9988776656', 'sales@dairybest.com',    '24BBBBB0000B1Z5', 'Sector 7, GIDC, Vatva, Ahmedabad', TRUE);
+
 -- ─── Ingredients ─────────────────────────────────────────────
-INSERT INTO Ingredients (id, name, unit, current_stock, minimum_stock) VALUES
-  (1, 'Tomato',        'kg',  8,  5),
-  (2, 'Cheese',        'kg',  10, 5),
-  (3, 'Burger Bun',    'pcs', 50, 20),
-  (4, 'Chicken Patty', 'pcs', 40, 15),
-  (5, 'Coffee Powder', 'kg',  5,  2);
+INSERT INTO Ingredients (id, name, unit, current_stock, minimum_stock, cost_price, supplier_id, is_active) VALUES
+  (1, 'Tomato',        'kg',  8,  5,  18.00, 1, TRUE),
+  (2, 'Cheese',        'kg',  10, 5,  320.00, 2, TRUE),
+  (3, 'Burger Bun',    'pcs', 50, 20, 8.00,  1, TRUE),
+  (4, 'Chicken Patty', 'pcs', 40, 15, 35.00, 1, TRUE),
+  (5, 'Coffee Powder', 'kg',  5,  2,  450.00, 2, TRUE);
 
 -- ─── Recipes (menu item -> ingredients used) ────────────────
 INSERT INTO Recipes (menu_item_id, ingredient_id, quantity_required) VALUES
@@ -158,10 +183,21 @@ INSERT INTO Branch_Inventory (branch_id, ingredient_id, current_stock) VALUES
   (1, 1, 8), (1, 2, 10), (1, 3, 50), (1, 4, 40), (1, 5, 5),
   (2, 1, 6), (2, 2, 8),  (2, 3, 30), (2, 4, 25), (2, 5, 3);
 
--- ─── Suppliers ───────────────────────────────────────────────
-INSERT INTO Suppliers (id, name, contact_person, phone, email) VALUES
-  (1, 'Fresh Farms Pvt Ltd',  'Suresh Patel', '9988776655', 'contact@freshfarms.com'),
-  (2, 'Dairy Best Suppliers', 'Meena Shah',   '9988776656', 'sales@dairybest.com');
+-- ─── Purchase Orders (sample: one RECEIVED, one PENDING) ──────
+INSERT INTO Purchase_Orders (id, po_number, supplier_id, branch_id, created_by, status, total_amount, order_date, received_at) VALUES
+  (1, 'PO-20260601-0001', 1, 1, 2, 'RECEIVED', 600.00, '2026-06-01 09:00:00', '2026-06-01 14:30:00'),
+  (2, 'PO-20260628-0001', 2, 1, 2, 'PENDING',  640.00, '2026-06-28 10:00:00', NULL);
+
+-- ─── Purchase Order Items ──────────────────────────────────────
+INSERT INTO Purchase_Order_Items (id, purchase_order_id, ingredient_id, quantity, unit_price, total_price) VALUES
+  (1, 1, 1, 20, 18.00, 360.00), -- 20kg Tomato @ ₹18/kg (PO-1, received)
+  (2, 1, 3, 30, 8.00,  240.00), -- 30 Burger Buns @ ₹8/pc (PO-1, received) — subtotal 600.00
+  (3, 2, 2, 2,  320.00, 640.00); -- 2kg Cheese @ ₹320/kg (PO-2, pending)
+
+-- ─── Inventory Transactions (only for the RECEIVED purchase order) ──
+INSERT INTO Inventory_Transactions (ingredient_id, branch_id, quantity, transaction_type, reference_id, reference_type, notes, created_by, transaction_date) VALUES
+  (1, 1, 20, 'PURCHASE', 1, 'PURCHASE_ORDER', 'Received PO-20260601-0001', 2, '2026-06-01 14:30:00'),
+  (3, 1, 30, 'PURCHASE', 1, 'PURCHASE_ORDER', 'Received PO-20260601-0001', 2, '2026-06-01 14:30:00');
 
 -- ─── Taxes ───────────────────────────────────────────────────
 INSERT INTO Taxes (id, tax_name, percentage) VALUES

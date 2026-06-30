@@ -143,14 +143,35 @@ CREATE TABLE Order_Items (
     FOREIGN KEY (menu_item_id) REFERENCES Menu_Items(id)
 );
 
+CREATE TABLE Suppliers (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    contact_person VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    gst_number VARCHAR(20),
+    address VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (name),
+    INDEX (is_active)
+);
+
 CREATE TABLE Ingredients (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     unit VARCHAR(50) NOT NULL,
-    current_stock DECIMAL(10, 2) NOT NULL,
-    minimum_stock DECIMAL(10, 2) NOT NULL,
+    current_stock DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    minimum_stock DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    cost_price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    supplier_id BIGINT,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id),
+    INDEX (name),
+    INDEX (is_active)
 );
 
 CREATE TABLE Recipes (
@@ -167,15 +188,22 @@ CREATE TABLE Recipes (
 
 CREATE TABLE Inventory_Transactions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    ingredient_id BIGINT,
+    ingredient_id BIGINT NOT NULL,
+    branch_id BIGINT NOT NULL,
     transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     quantity DECIMAL(10, 2) NOT NULL,
-    transaction_type ENUM('PURCHASE', 'SALE', 'WASTE', 'ADJUSTMENT') NOT NULL,
+    transaction_type ENUM('PURCHASE', 'ADJUSTMENT') NOT NULL,
     reference_id BIGINT,
-    reference_type ENUM('ORDER', 'PURCHASE_ORDER', 'WASTE', 'MANUAL_ADJUSTMENT') NOT NULL,
+    reference_type ENUM('PURCHASE_ORDER', 'MANUAL_ADJUSTMENT') NOT NULL,
+    notes VARCHAR(255),
+    created_by BIGINT,
     FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id),
+    FOREIGN KEY (branch_id) REFERENCES Branches(id),
+    FOREIGN KEY (created_by) REFERENCES Users(id),
     INDEX(ingredient_id),
-    INDEX(transaction_date)
+    INDEX(branch_id),
+    INDEX(transaction_date),
+    INDEX(transaction_type)
 );
 
 CREATE TABLE Branch_Inventory (
@@ -189,30 +217,37 @@ CREATE TABLE Branch_Inventory (
     FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
 );
 
-CREATE TABLE Suppliers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    contact_person VARCHAR(100),
-    phone VARCHAR(20),
-    email VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 CREATE TABLE Purchase_Orders (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    supplier_id BIGINT,
+    po_number VARCHAR(50) UNIQUE NOT NULL,
+    supplier_id BIGINT NOT NULL,
+    branch_id BIGINT NOT NULL,
+    created_by BIGINT NOT NULL,
+    status ENUM('PENDING', 'RECEIVED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id)
+    received_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id),
+    FOREIGN KEY (branch_id) REFERENCES Branches(id),
+    FOREIGN KEY (created_by) REFERENCES Users(id),
+    INDEX (supplier_id),
+    INDEX (branch_id),
+    INDEX (status),
+    INDEX (order_date)
 );
 
 CREATE TABLE Purchase_Order_Items (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    purchase_order_id BIGINT,
-    ingredient_id BIGINT,
+    purchase_order_id BIGINT NOT NULL,
+    ingredient_id BIGINT NOT NULL,
     quantity DECIMAL(10, 2) NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (purchase_order_id) REFERENCES Purchase_Orders(id),
-    FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id)
+    FOREIGN KEY (ingredient_id) REFERENCES Ingredients(id),
+    INDEX (purchase_order_id)
 );
 
 

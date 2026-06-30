@@ -96,6 +96,11 @@ const PERMISSIONS = {
   INVENTORY_MANAGE: "inventory.manage",
   SUPPLIERS_MANAGE: "suppliers.manage",
 
+  SUPPLIER_VIEW: "supplier.view",
+  SUPPLIER_MANAGE: "supplier.manage",
+  PURCHASE_VIEW: "purchase.view",
+  PURCHASE_MANAGE: "purchase.manage",
+
   CUSTOMERS_MANAGE: "customers.manage",
   LOYALTY_MANAGE: "loyalty.manage",
   COUPONS_MANAGE: "coupons.manage",
