@@ -96,11 +96,12 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (4, 11), -- kitchen.update_status
   (4, 13); -- inventory.view
 
--- Waiter: take and track orders, no payment handling
+-- Waiter: take and track orders, view kitchen queue for ready orders
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (5, 5),  -- orders.create
   (5, 6),  -- orders.view
   (5, 7),  -- orders.update_status
+  (5, 10), -- kitchen.view (to see READY orders and serve them)
   (5, 20); -- tables.view
 
 -- Inventory Manager: full inventory module, no POS/orders access
@@ -208,7 +209,10 @@ INSERT INTO Taxes (id, tax_name, percentage) VALUES
 INSERT INTO Coupons (id, code, discount, discount_type, valid_from, valid_to, minimum_order_amount, max_usage) VALUES
   (1, 'WELCOME10', 10.00, 'PERCENTAGE', '2026-01-01', '2026-12-31', 200.00, 100),
   (2, 'FLAT50',    50.00, 'FIXED',      '2026-01-01', '2026-12-31', 300.00, 50);
-  
+
+-- ─── Kitchen Orders (sample data — tied to no real Orders yet) ───
+-- These are inserted in 03_sample_transactions.sql instead,
+-- once real Orders exist. Keeping seed data minimal here.
 -- Customers
 
 INSERT INTO Customers

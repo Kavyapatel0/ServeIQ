@@ -102,13 +102,22 @@ CREATE TABLE Payments (
 
 CREATE TABLE Kitchen_Orders (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_id BIGINT,
-    status ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED') NOT NULL,
+    order_id BIGINT NOT NULL,
+    branch_id BIGINT NOT NULL,
+    status ENUM('PENDING', 'PREPARING', 'READY', 'SERVED') NOT NULL DEFAULT 'PENDING',
     assigned_chef BIGINT,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
+    notes VARCHAR(255),
+    started_at TIMESTAMP NULL,
+    ready_at TIMESTAMP NULL,
+    served_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES Orders(id),
-    FOREIGN KEY (assigned_chef) REFERENCES Users(id)
+    FOREIGN KEY (branch_id) REFERENCES Branches(id),
+    FOREIGN KEY (assigned_chef) REFERENCES Users(id),
+    INDEX (branch_id),
+    INDEX (status),
+    INDEX (created_at)
 );
 
 

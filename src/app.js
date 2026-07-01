@@ -14,6 +14,7 @@ const ingredientRoutes = require("./routes/ingredient.routes");
 const supplierRoutes   = require("./routes/supplier.routes");
 const purchaseRoutes   = require("./routes/purchase.routes");
 const inventoryRoutes  = require("./routes/inventory.routes");
+const kitchenRoutes    = require("./routes/kitchen.routes");
 const swaggerSpec      = require("./utils/swagger");
 
 const app = express();
@@ -80,6 +81,9 @@ app.use("/api/ingredients",     ingredientRoutes);
 app.use("/api/suppliers",       supplierRoutes);
 app.use("/api/purchase-orders", purchaseRoutes);
 app.use("/api/inventory",       inventoryRoutes);
+
+// ─── Kitchen Dashboard V1 Routes ─────────────────────────────────────────────
+app.use("/api/kitchen", kitchenRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 app.use((req, res) => {

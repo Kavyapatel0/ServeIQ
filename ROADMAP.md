@@ -111,7 +111,7 @@ Status: COMPLETED
 - [ ] Inventory Overview
 - [ ] Low Stock Dashboard
 
-Status: PLANNED
+Status: COMPLETED
 
 ---
 
@@ -135,7 +135,7 @@ Status: PLANNED
 - [ ] Socket.IO Integration
 - [ ] Live Order Updates
 
-Status: PLANNED
+Status: COMPLETED
 
 ---
 

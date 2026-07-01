@@ -208,6 +208,27 @@ const POSService = {
 
       await conn.commit();
 
+      // Emit real-time event so kitchen screen updates instantly
+      try {
+        const { getIO, KITCHEN_EVENTS } = require("../sockets/socket");
+        // Fetch branch_id for the room
+        const [branchRow] = await pool.execute(
+          `SELECT branch_id FROM Orders WHERE id = ? LIMIT 1`,
+          [orderId]
+        );
+        if (branchRow[0]) {
+          getIO()
+            .to(`branch_${branchRow[0].branch_id}`)
+            .emit(KITCHEN_EVENTS.ORDER_SENT_TO_KITCHEN, {
+              order_id: orderId,
+              branch_id: branchRow[0].branch_id,
+              timestamp: new Date().toISOString(),
+            });
+        }
+      } catch (socketErr) {
+        console.error("⚠️  Socket.IO emit failed:", socketErr.message);
+      }
+
       await AuditService.log(userId, "ORDER_SENT_TO_KITCHEN", "Order", orderId, {
         previous_status: ORDER_STATUS.CREATED,
       });
