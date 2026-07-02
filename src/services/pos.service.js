@@ -250,7 +250,7 @@ const POSService = {
       await conn.beginTransaction();
 
       const [orderRows] = await conn.execute(
-        `SELECT id, status, grand_total, table_id FROM Orders WHERE id = ? LIMIT 1`,
+        `SELECT id, status, grand_total, table_id, customer_id FROM Orders WHERE id = ? LIMIT 1`,
         [order_id]
       );
       const order = orderRows[0];
@@ -292,15 +292,44 @@ const POSService = {
         );
       }
 
+      // ── CRM: Loyalty Points Hook ────────────────────────────────
+      // Rule: ₹10 spent = 1 point. Only if order has a linked customer.
+      let pointsEarned = 0;
+      if (order.customer_id) {
+        pointsEarned = Math.floor(amount / 10);
+        if (pointsEarned > 0) {
+          await conn.execute(
+            `UPDATE Customers SET loyalty_points = loyalty_points + ? WHERE id = ?`,
+            [pointsEarned, order.customer_id]
+          );
+          await conn.execute(
+            `INSERT INTO Loyalty_Transactions (customer_id, points, transaction_type)
+             VALUES (?, ?, 'EARNED')`,
+            [order.customer_id, pointsEarned]
+          );
+        }
+      }
+      // ── End CRM Hook ────────────────────────────────────────────
+
       await conn.commit();
 
       await AuditService.log(userId, "PAYMENT_COMPLETED", "Order", order_id, {
         payment_id: payResult.insertId,
         amount,
         payment_method,
+        customer_id: order.customer_id || null,
+        loyalty_points_earned: pointsEarned,
       });
 
-      return { paymentId: payResult.insertId, amount, payment_method };
+      if (pointsEarned > 0) {
+        await AuditService.log(userId, "LOYALTY_POINTS_ADDED", "Customer", order.customer_id, {
+          points: pointsEarned,
+          order_id,
+          amount,
+        });
+      }
+
+      return { paymentId: payResult.insertId, amount, payment_method, loyalty_points_earned: pointsEarned };
     } catch (err) {
       await conn.rollback();
       throw err;

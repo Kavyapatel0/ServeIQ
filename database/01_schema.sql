@@ -47,9 +47,16 @@ CREATE TABLE Customers (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE,
     phone VARCHAR(20),
+    date_of_birth DATE,
+    gender ENUM('MALE', 'FEMALE', 'OTHER'),
+    address VARCHAR(255),
     loyalty_points INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (phone),
+    INDEX (email),
+    INDEX (is_active)
 );
 
 CREATE TABLE Restaurant_Tables (
@@ -279,8 +286,11 @@ CREATE TABLE Coupons (
     valid_to DATE,
     minimum_order_amount DECIMAL(10,2),
     max_usage INT,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (code),
+    INDEX (is_active)
 );
 
 CREATE TABLE Coupon_Usage (
@@ -290,6 +300,24 @@ CREATE TABLE Coupon_Usage (
     usage_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES Customers(id),
     FOREIGN KEY (coupon_id) REFERENCES Coupons(id)
+);
+
+-- Coupon_Redemptions tracks every coupon applied at checkout, linked to the order.
+-- Coupon_Usage (above) is the original table kept for compatibility.
+-- New code writes to Coupon_Redemptions only.
+CREATE TABLE Coupon_Redemptions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    customer_id BIGINT NOT NULL,
+    coupon_id BIGINT NOT NULL,
+    order_id BIGINT NOT NULL,
+    discount_applied DECIMAL(10,2) NOT NULL,
+    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES Customers(id),
+    FOREIGN KEY (coupon_id) REFERENCES Coupons(id),
+    FOREIGN KEY (order_id) REFERENCES Orders(id),
+    INDEX (customer_id),
+    INDEX (coupon_id),
+    INDEX (order_id)
 );
 
 CREATE TABLE Taxes (

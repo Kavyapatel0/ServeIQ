@@ -108,6 +108,9 @@ const PERMISSIONS = {
   ANALYTICS_VIEW: "analytics.view",
 
   TABLES_VIEW: "tables.view",
+
+  CRM_VIEW: "crm.view",
+  CRM_MANAGE: "crm.manage",
 };
 
 /**

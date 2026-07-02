@@ -46,7 +46,9 @@ INSERT INTO Permissions (id, name, permission_key) VALUES
   (21, 'View Suppliers',            'supplier.view'),
   (22, 'Manage Suppliers',          'supplier.manage'),
   (23, 'View Purchase Orders',      'purchase.view'),
-  (24, 'Manage Purchase Orders',    'purchase.manage');
+  (24, 'Manage Purchase Orders',    'purchase.manage'),
+  (25, 'View CRM',                  'crm.view'),
+  (26, 'Manage CRM',                'crm.manage');
 
 -- ─── Role ↔ Permission Mapping ───────────────────────────────
 
@@ -76,7 +78,9 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (2, 21), -- supplier.view
   (2, 22), -- supplier.manage
   (2, 23), -- purchase.view
-  (2, 24); -- purchase.manage
+  (2, 24), -- purchase.manage
+  (2, 25), -- crm.view
+  (2, 26); -- crm.manage
 
 -- Cashier: orders, payments, customers/loyalty/coupons at the till
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
@@ -88,7 +92,8 @@ INSERT INTO Role_Permissions (role_id, permission_id) VALUES
   (3, 17), -- loyalty.manage
   (3, 18), -- coupons.manage
   (3, 20), -- tables.view
-  (3, 13); -- inventory.view (optional read-only)
+  (3, 13), -- inventory.view (optional read-only)
+  (3, 25); -- crm.view
 
 -- Chef: kitchen queue + read-only inventory
 INSERT INTO Role_Permissions (role_id, permission_id) VALUES
