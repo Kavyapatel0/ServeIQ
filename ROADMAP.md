@@ -162,7 +162,7 @@ Status: COMPLETED
 - [ ] Visit History
 - [ ] Spending History
 
-Status: PLANNED
+Status: COMPLETED
 
 ---
 

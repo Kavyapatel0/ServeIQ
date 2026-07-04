@@ -18,6 +18,7 @@ const kitchenRoutes    = require("./routes/kitchen.routes");
 const customerRoutes   = require("./routes/customer.routes");
 const couponRoutes     = require("./routes/coupon.routes");
 const crmRoutes        = require("./routes/crm.routes");
+const analyticsRoutes  = require("./routes/analytics.routes");
 const swaggerSpec      = require("./utils/swagger");
 
 const app = express();
@@ -92,6 +93,9 @@ app.use("/api/kitchen", kitchenRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/coupons",   couponRoutes);
 app.use("/api/crm",       crmRoutes);
+
+// ─── Analytics V1 Routes ─────────────────────────────────────────────────────
+app.use("/api/analytics", analyticsRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 app.use((req, res) => {
