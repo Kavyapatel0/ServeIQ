@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/*
+  ServeIQ Design Tokens
+  ─────────────────────
+  Derived directly from the design brief: FoodFlow's restaurant warmth
+  + the analytics dashboard's enterprise polish, filtered through a
+  Stripe/Linear-level attention to spacing and restraint.
+
+  Sidebar   : Dark Navy  (#0F172A) — enterprise anchor, not a bakery-app white
+  Primary   : Orange     (#F97316) — energetic, food-adjacent, never garish
+  Background: #F8FAFC    — barely-there cool gray, not stark white
+  Cards     : #FFFFFF
+  Radius    : 12px inputs/buttons, 16px cards — soft, never pill-shaped
+  Shadows   : shadow-sm/md only — no shadow-2xl anywhere in this app
+*/
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Brand */
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+
+  /* Navy sidebar scale */
+  --color-navy-950: #0b1120;
+  --color-navy-900: #0f172a;
+  --color-navy-800: #1e293b;
+  --color-navy-700: #334155;
+  --color-navy-600: #475569;
+  --color-navy-400: #94a3b8;
+  --color-navy-200: #e2e8f0;
+
+  /* Semantic */
+  --color-success: #22c55e;
+  --color-success-bg: #f0fdf4;
+  --color-danger: #ef4444;
+  --color-danger-bg: #fef2f2;
+  --color-warning: #facc15;
+  --color-warning-bg: #fefce8;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
+
+  /* Surfaces */
+  --color-app-bg: #f8fafc;
+  --color-card: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+
+  /* Radius scale used consistently across the app */
+  --radius-input: 10px;
+  --radius-button: 12px;
+  --radius-card: 16px;
+
+  /* Shadows — deliberately restrained */
+  --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-elevated: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--color-app-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
+
+  /* Visible keyboard focus everywhere — accessibility floor, non-negotiable */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-brand-900);
+  }
+}
+
+@layer utilities {
+  /* Thin, unobtrusive scrollbar for the sidebar and dense tables */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-navy-600) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-navy-600);
+    border-radius: 999px;
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-soft);
+  }
+  .card-shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
