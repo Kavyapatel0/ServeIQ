@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, LogOut, User, Settings, ChevronDown } from "lucide-react";
-import { useSelector } from "react-redux";
+import { Bell, Search, LogOut, User, Settings, ChevronDown, Menu } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
 
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/utils/format";
 import { ROUTES } from "@/constants/routes";
 import { selectNotifications, selectUnreadCount } from "@/redux/slices/notificationSlice";
+import { toggleMobileSidebar } from "@/redux/slices/uiSlice";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import {
  */
 export function Navbar() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user, logout } = useAuth();
   const unreadCount = useSelector(selectUnreadCount);
   const notifications = useSelector(selectNotifications);
@@ -36,7 +38,16 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 px-6 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 px-4 backdrop-blur-sm sm:px-6">
+      {/* Hamburger — mobile/tablet only, opens the Sidebar drawer */}
+      <button
+        onClick={() => dispatch(toggleMobileSidebar())}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-app-bg hover:text-text-primary lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       {/* Global search */}
       <div className="relative flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
