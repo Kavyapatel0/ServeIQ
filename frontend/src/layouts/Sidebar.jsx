@@ -15,22 +15,6 @@ import {
 } from "@/redux/slices/uiSlice";
 import { cn } from "@/utils/cn";
 
-/**
- * Dark navy sidebar (#0F172A scale) — the enterprise anchor of the
- * design brief, deliberately not white, so cards read as bright
- * surfaces floating on a calm, serious frame.
- *
- * Nav items self-filter by permission: NAV_ITEMS carries a
- * `permission` key per item, and anything the current role can't
- * access simply never renders — no role-name branching here at all.
- *
- * Responsive behavior:
- *   - Desktop (>=1024px): sticky, part of the flex layout, collapses
- *     to an icon-only 72px rail via the button at the bottom.
- *   - Mobile/tablet: off-canvas drawer, opened by the hamburger button
- *     in the Navbar, closed via the backdrop, the X button, or picking
- *     a nav item.
- */
 export function Sidebar() {
   const dispatch = useDispatch();
   const collapsed = useSelector(selectSidebarCollapsed);
@@ -44,7 +28,7 @@ export function Sidebar() {
   };
 
   const navList = (isCollapsed) => (
-    <nav className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-3 py-5">
+    <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
       {visibleItems.map((item) => (
         <NavLink
           key={item.path}
@@ -53,24 +37,44 @@ export function Sidebar() {
           onClick={closeOnMobile}
           className={({ isActive }) =>
             cn(
-              "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
               isActive
-                ? "bg-brand-500/10 text-white"
-                : "text-navy-400 hover:bg-white/5 hover:text-white"
+                ? "bg-white/12 text-white shadow-sm"
+                : "text-forest-200 hover:bg-white/8 hover:text-white"
             )
           }
           title={isCollapsed ? item.label : undefined}
         >
           {({ isActive }) => (
             <>
+              {/* Active left indicator */}
               {isActive && (
-                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand-500" />
+                <motion.span
+                  layoutId="sidebar-active"
+                  className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-full bg-accent-400"
+                />
               )}
+
+              {/* Icon */}
               <item.icon
-                className={cn("h-[18px] w-[18px] shrink-0", isActive && "text-brand-400")}
-                strokeWidth={2}
+                className={cn(
+                  "h-[18px] w-[18px] shrink-0 transition-colors",
+                  isActive
+                    ? "text-white"
+                    : "text-forest-300 group-hover:text-white"
+                )}
+                strokeWidth={isActive ? 2.25 : 1.75}
               />
-              {!isCollapsed && <span>{item.label}</span>}
+
+              {/* Label */}
+              {!isCollapsed && (
+                <span className="flex-1 truncate">{item.label}</span>
+              )}
+
+              {/* Active dot when collapsed */}
+              {isCollapsed && isActive && (
+                <span className="absolute right-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent-400" />
+              )}
             </>
           )}
         </NavLink>
@@ -78,7 +82,7 @@ export function Sidebar() {
     </nav>
   );
 
-  // ── Mobile: off-canvas drawer, unmounted entirely when closed ──────────
+  // ── Mobile drawer ─────────────────────────────────────────────────────
   if (!isDesktop) {
     return (
       <AnimatePresence>
@@ -90,7 +94,7 @@ export function Sidebar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-navy-950/60 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-forest-900/60 backdrop-blur-sm"
               onClick={() => dispatch(closeMobileSidebar())}
               aria-hidden="true"
             />
@@ -100,19 +104,21 @@ export function Sidebar() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-navy-900 shadow-elevated"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col shadow-sidebar"
+              style={{ backgroundColor: "#2b4a3c" }}
             >
               <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
                 <Logo variant="dark" collapsed={false} />
                 <button
                   onClick={() => dispatch(closeMobileSidebar())}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-navy-400 hover:bg-white/5 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-forest-200 transition-colors hover:bg-white/8 hover:text-white"
                   aria-label="Close menu"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               {navList(false)}
+              <SidebarFooterSection collapsed={false} />
             </motion.aside>
           </>
         )}
@@ -120,33 +126,53 @@ export function Sidebar() {
     );
   }
 
-  // ── Desktop: sticky, collapsible rail ───────────────────────────────────
+  // ── Desktop rail ──────────────────────────────────────────────────────
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col bg-navy-900 transition-[width] duration-200",
-        collapsed ? "w-[72px]" : "w-64"
+        "sticky top-0 flex h-screen shrink-0 flex-col shadow-sidebar transition-[width] duration-200",
+        collapsed ? "w-[68px]" : "w-60"
       )}
+      style={{ backgroundColor: "#2b4a3c" }}
     >
-      <div className="flex h-16 items-center border-b border-white/10 px-4">
+      {/* Logo */}
+      <div className={cn(
+        "flex h-16 items-center border-b border-white/10",
+        collapsed ? "justify-center px-2" : "px-4"
+      )}>
         <Logo variant="dark" collapsed={collapsed} />
       </div>
 
       {navList(collapsed)}
 
-      <div className="border-t border-white/10 p-3">
-        <button
-          onClick={() => dispatch(toggleSidebar())}
-          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium text-navy-400 transition-colors hover:bg-white/5 hover:text-white"
-        >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : (
-            <>
-              <ChevronsLeft className="h-4 w-4" />
-              <span>Collapse</span>
-            </>
-          )}
-        </button>
-      </div>
+      <SidebarFooterSection collapsed={collapsed} onToggle={() => dispatch(toggleSidebar())} />
     </aside>
+  );
+}
+
+function SidebarFooterSection({ collapsed, onToggle }) {
+  return (
+    <div className="border-t border-white/10 p-3">
+      {onToggle && (
+        <button
+          onClick={onToggle}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-xl py-2.5 text-sm font-medium text-forest-200 transition-colors hover:bg-white/8 hover:text-white",
+            collapsed ? "justify-center px-0" : "justify-start px-3"
+          )}
+        >
+          {collapsed
+            ? <ChevronsRight className="h-4 w-4" />
+            : (<><ChevronsLeft className="h-4 w-4" /><span>Collapse</span></>)
+          }
+        </button>
+      )}
+      {/* Version tag */}
+      {!collapsed && (
+        <p className="mt-2 px-3 text-[10px] font-medium text-forest-300/50 uppercase tracking-wider">
+          v1.0 · Fine Dining OS
+        </p>
+      )}
+    </div>
   );
 }

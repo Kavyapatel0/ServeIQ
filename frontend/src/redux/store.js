@@ -5,6 +5,8 @@ import uiReducer from "./slices/uiSlice";
 import branchReducer from "./slices/branchSlice";
 import notificationReducer from "./slices/notificationSlice";
 import dashboardReducer from "./slices/dashboardSlice";
+import cartReducer from "./slices/cartSlice";
+import kitchenReducer from "./slices/kitchenSlice";
 
 export const store = configureStore({
   reducer: {
@@ -13,5 +15,7 @@ export const store = configureStore({
     branch: branchReducer,
     notifications: notificationReducer,
     dashboard: dashboardReducer,
+    cart: cartReducer,
+    kitchen: kitchenReducer,
   },
 });

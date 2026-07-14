@@ -38,28 +38,39 @@ export function AppRoutes() {
           <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
 
+          {/* POS — single page, no sub-routes */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.ORDERS_VIEW} />}>
             <Route path={ROUTES.POS} element={<POSPage />} />
           </Route>
 
+          {/* Kitchen — single page */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.KITCHEN_VIEW} />}>
             <Route path={ROUTES.KITCHEN} element={<KitchenPage />} />
           </Route>
 
+          {/* Inventory — tabbed SPA; sub-paths all render InventoryPage
+              which manages its own tab state internally */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.INVENTORY_VIEW} />}>
             <Route path={ROUTES.INVENTORY} element={<InventoryPage />} />
+            <Route path={`${ROUTES.INVENTORY}/*`} element={<InventoryPage />} />
           </Route>
 
+          {/* CRM — tabbed SPA */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.CRM_VIEW} />}>
             <Route path={ROUTES.CRM} element={<CRMPage />} />
+            <Route path={`${ROUTES.CRM}/*`} element={<CRMPage />} />
           </Route>
 
+          {/* Analytics */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.ANALYTICS_VIEW} />}>
             <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
+            <Route path={`${ROUTES.ANALYTICS}/*`} element={<AnalyticsPage />} />
           </Route>
 
+          {/* Administration — tabbed SPA */}
           <Route element={<ProtectedRoute permission={PERMISSIONS.USERS_VIEW} />}>
             <Route path={ROUTES.ADMIN} element={<AdminPage />} />
+            <Route path={`${ROUTES.ADMIN}/*`} element={<AdminPage />} />
           </Route>
         </Route>
       </Route>

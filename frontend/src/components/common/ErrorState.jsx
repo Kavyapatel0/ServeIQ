@@ -1,21 +1,26 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 
-/**
- * "Errors don't apologize, and they are never vague about what happened."
- * Used wherever a query/fetch fails — pairs with a Retry action wired
- * to whatever refetch function the calling page already has.
- */
-export function ErrorState({ message = "Something went wrong while loading this data.", onRetry }) {
+export function ErrorState({ message, onRetry, className, compact = false }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-card border border-border bg-card px-6 py-16 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger-bg">
-        <AlertTriangle className="h-6 w-6 text-red-600" />
+    <div className={cn(
+      "flex flex-col items-center justify-center gap-3 text-center",
+      compact ? "py-8" : "py-12",
+      className
+    )}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-danger-bg ring-1 ring-danger/20">
+        <AlertTriangle className="h-5 w-5 text-danger" strokeWidth={1.75} />
       </div>
-      <h3 className="text-base font-semibold text-text-primary">Couldn't load this</h3>
-      <p className="mt-1.5 max-w-sm text-sm text-text-secondary">{message}</p>
+      <div>
+        <p className="text-sm font-semibold text-text-primary">Something went wrong</p>
+        <p className="mt-0.5 text-xs text-text-secondary max-w-xs leading-relaxed">
+          {message || "Unable to load data. Please try again."}
+        </p>
+      </div>
       {onRetry && (
-        <Button variant="outline" className="mt-6" onClick={onRetry}>
+        <Button variant="outline" size="sm" onClick={onRetry} className="mt-1 gap-2">
+          <RefreshCw className="h-3.5 w-3.5" />
           Try again
         </Button>
       )}

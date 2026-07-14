@@ -4,28 +4,32 @@ import { cn } from "@/utils/cn";
 export const Card = forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("rounded-card border border-border bg-card card-shadow", className)}
+    className={cn(
+      "rounded-card border border-border bg-surface card-shadow",
+      "transition-shadow duration-200",
+      className
+    )}
     {...props}
   />
 ));
 Card.displayName = "Card";
 
 export const CardHeader = forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex flex-col gap-1.5 p-6 pb-0", className)} {...props} />
+  <div ref={ref} className={cn("flex flex-col gap-1 p-6 pb-0", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
 export const CardTitle = forwardRef(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-semibold leading-tight text-text-primary", className)}
+    className={cn("text-base font-semibold leading-tight text-text-primary tracking-tight", className)}
     {...props}
   />
 ));
 CardTitle.displayName = "CardTitle";
 
 export const CardDescription = forwardRef(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("text-sm text-text-secondary", className)} {...props} />
+  <p ref={ref} className={cn("text-sm text-text-secondary mt-0.5", className)} {...props} />
 ));
 CardDescription.displayName = "CardDescription";
 

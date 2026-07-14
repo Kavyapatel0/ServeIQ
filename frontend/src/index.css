@@ -2,122 +2,260 @@
 @plugin "tailwindcss-animate";
 
 /*
-  ServeIQ Design Tokens
-  ─────────────────────
-  Derived directly from the design brief: FoodFlow's restaurant warmth
-  + the analytics dashboard's enterprise polish, filtered through a
-  Stripe/Linear-level attention to spacing and restraint.
+  ServeIQ Premium Fine-Dining Design System
+  ──────────────────────────────────────────
+  Identity: Luxury Fine-Dining Restaurant OS
+  Feeling:  Elegant · Premium · Sophisticated · Minimal · Corporate
 
-  Sidebar   : Dark Navy  (#0F172A) — enterprise anchor, not a bakery-app white
-  Primary   : Orange     (#F97316) — energetic, food-adjacent, never garish
-  Background: #F8FAFC    — barely-there cool gray, not stark white
-  Cards     : #FFFFFF
-  Radius    : 12px inputs/buttons, 16px cards — soft, never pill-shaped
-  Shadows   : shadow-sm/md only — no shadow-2xl anywhere in this app
+  Background  : #F6F1E8  — warm parchment, immediately signals hospitality
+  Primary     : #355C4B  — deep forest green, the brand anchor
+  Accent      : #C46A2D  — warm amber, used sparingly for KPIs/highlights
+  Sidebar     : #2B4A3C  — darkened forest green, always-on enterprise rail
+  Cards       : #FFFDF9  — warm white, floats on the parchment background
+  Typography  : #1F1B18  — near-black with warm undertone
 */
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand */
-  --color-brand-50: #fff7ed;
-  --color-brand-100: #ffedd5;
-  --color-brand-200: #fed7aa;
-  --color-brand-300: #fdba74;
-  --color-brand-400: #fb923c;
-  --color-brand-500: #f97316;
-  --color-brand-600: #ea580c;
-  --color-brand-700: #c2410c;
-  --color-brand-800: #9a3412;
-  --color-brand-900: #7c2d12;
+  /* ── Primary Brand: Deep Forest Green ─────────────────────────────── */
+  --color-primary-50:  #f0f6f3;
+  --color-primary-100: #d9ece5;
+  --color-primary-200: #b3d9cc;
+  --color-primary-300: #7fbfaa;
+  --color-primary-400: #4d9e84;
+  --color-primary-500: #355c4b;   /* BRAND PRIMARY */
+  --color-primary-600: #28473a;   /* HOVER */
+  --color-primary-700: #1e3529;
+  --color-primary-800: #152419;
+  --color-primary-900: #0d160f;
 
-  /* Navy sidebar scale */
-  --color-navy-950: #0b1120;
-  --color-navy-900: #0f172a;
-  --color-navy-800: #1e293b;
-  --color-navy-700: #334155;
-  --color-navy-600: #475569;
-  --color-navy-400: #94a3b8;
-  --color-navy-200: #e2e8f0;
+  /* ── Accent: Warm Amber ────────────────────────────────────────────── */
+  --color-accent-50:  #fdf4ec;
+  --color-accent-100: #f9e3cb;
+  --color-accent-200: #f3c698;
+  --color-accent-300: #eca06a;
+  --color-accent-400: #d9813d;
+  --color-accent-500: #c46a2d;    /* ACCENT PRIMARY */
+  --color-accent-600: #a85522;
+  --color-accent-700: #8a4119;
+  --color-accent-800: #6b3013;
+  --color-accent-900: #4d200d;
 
-  /* Semantic */
-  --color-success: #22c55e;
-  --color-success-bg: #f0fdf4;
-  --color-danger: #ef4444;
-  --color-danger-bg: #fef2f2;
-  --color-warning: #facc15;
-  --color-warning-bg: #fefce8;
-  --color-info: #3b82f6;
-  --color-info-bg: #eff6ff;
+  /* ── Warm Neutrals ─────────────────────────────────────────────────── */
+  --color-warm-50:  #fdfcf9;
+  --color-warm-100: #f6f1e8;      /* APP BACKGROUND */
+  --color-warm-200: #ede4d8;      /* ALTERNATE SURFACE */
+  --color-warm-300: #d8ccbe;      /* BORDER */
+  --color-warm-400: #b8a898;
+  --color-warm-500: #97887a;
+  --color-warm-600: #72675c;      /* SECONDARY TEXT */
+  --color-warm-700: #4a4039;
+  --color-warm-800: #2f2820;
+  --color-warm-900: #1f1b18;      /* PRIMARY TEXT */
 
-  /* Surfaces */
-  --color-app-bg: #f8fafc;
-  --color-card: #ffffff;
-  --color-border: #e5e7eb;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
+  /* ── Sidebar / Surface Dark ────────────────────────────────────────── */
+  --color-forest-950: #0f1a14;
+  --color-forest-900: #162011;    /* DEEPEST SIDEBAR */
+  --color-forest-800: #1e2f1c;
+  --color-forest-700: #243823;
+  --color-forest-600: #2b4a3c;    /* SIDEBAR BG */
+  --color-forest-500: #355c4b;    /* = primary-500 */
+  --color-forest-400: #4d7a62;
+  --color-forest-300: #6b9e84;
+  --color-forest-200: #94c2a8;
+  --color-forest-100: #c8e0d4;
+  --color-forest-50:  #f0f6f2;
 
-  /* Radius scale used consistently across the app */
-  --radius-input: 10px;
+  /* ── Semantic Colors (warm-tinted) ─────────────────────────────────── */
+  --color-success:    #4c7a4b;
+  --color-success-bg: #eef6ee;
+  --color-success-text: #2d5c2c;
+
+  --color-warning:    #d39b2c;
+  --color-warning-bg: #fdf5e0;
+  --color-warning-text: #8a640f;
+
+  --color-danger:     #b44848;
+  --color-danger-bg:  #fdf0f0;
+  --color-danger-text:#7a2020;
+
+  --color-info:       #3a6fa8;
+  --color-info-bg:    #eef3fb;
+  --color-info-text:  #1e4a7a;
+
+  /* ── Application Surfaces ──────────────────────────────────────────── */
+  --color-app-bg:         #f6f1e8;    /* Warm parchment */
+  --color-surface:        #fffdf9;    /* Card surface */
+  --color-surface-alt:    #ede4d8;    /* Alternate surface */
+  --color-border:         #d8ccbe;    /* Warm border */
+  --color-border-light:   #e8e0d4;    /* Lighter border variant */
+
+  /* ── Typography ────────────────────────────────────────────────────── */
+  --color-text-primary:   #1f1b18;
+  --color-text-secondary: #72675c;
+  --color-text-disabled:  #b8a898;
+  --color-text-inverse:   #fffdf9;
+
+  /* ── Radius (consistent premium rounding) ───────────────────────────── */
+  --radius-xs:     6px;
+  --radius-sm:     8px;
+  --radius-input:  12px;
   --radius-button: 12px;
-  --radius-card: 16px;
+  --radius-card:   16px;
+  --radius-dialog: 20px;
+  --radius-xl:     24px;
 
-  /* Shadows — deliberately restrained */
-  --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
-  --shadow-elevated: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+  /* ── Shadows (warm-tinted, soft layered) ───────────────────────────── */
+  --shadow-xs:       0 1px 2px 0 rgb(31 27 24 / 0.04);
+  --shadow-soft:     0 1px 3px 0 rgb(31 27 24 / 0.06), 0 1px 2px -1px rgb(31 27 24 / 0.04);
+  --shadow-card:     0 2px 8px -2px rgb(31 27 24 / 0.08), 0 1px 3px 0 rgb(31 27 24 / 0.05);
+  --shadow-elevated: 0 8px 24px -4px rgb(31 27 24 / 0.10), 0 4px 8px -2px rgb(31 27 24 / 0.06);
+  --shadow-modal:    0 24px 48px -8px rgb(31 27 24 / 0.18), 0 8px 16px -4px rgb(31 27 24 / 0.10);
+  --shadow-sidebar:  4px 0 24px 0 rgb(15 26 17 / 0.15);
+
+  /* ── Chart Palette (coordinated, premium) ─────────────────────────── */
+  --color-chart-1: #355c4b;   /* Primary green — revenue */
+  --color-chart-2: #c46a2d;   /* Warm amber — expenses */
+  --color-chart-3: #7a9e6e;   /* Muted olive — orders */
+  --color-chart-4: #8b6b4a;   /* Earth brown — inventory */
+  --color-chart-5: #4d7a62;   /* Deep green — customers */
+  --color-chart-6: #e8c3a9;   /* Warm beige — payments */
 }
 
+/* ── Tailwind v4 compat aliases ────────────────────────────────────────── */
 @layer base {
+  :root {
+    /* Map legacy token names used throughout components */
+    --color-brand-50:  var(--color-primary-50);
+    --color-brand-100: var(--color-primary-100);
+    --color-brand-200: var(--color-primary-200);
+    --color-brand-300: var(--color-primary-300);
+    --color-brand-400: var(--color-primary-400);
+    --color-brand-500: var(--color-primary-500);
+    --color-brand-600: var(--color-primary-600);
+    --color-brand-700: var(--color-primary-700);
+    --color-brand-800: var(--color-primary-800);
+    --color-brand-900: var(--color-primary-900);
+
+    /* Map navy tokens → forest tokens for sidebar compat */
+    --color-navy-950: var(--color-forest-950);
+    --color-navy-900: var(--color-forest-600);
+    --color-navy-800: var(--color-forest-500);
+    --color-navy-700: var(--color-forest-400);
+    --color-navy-600: var(--color-forest-300);
+    --color-navy-400: var(--color-forest-200);
+    --color-navy-200: var(--color-forest-100);
+
+    /* App surfaces */
+    --color-card: var(--color-surface);
+  }
+
   * {
     border-color: var(--color-border);
   }
 
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     background-color: var(--color-app-bg);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
+    line-height: 1.6;
   }
 
-  /* Visible keyboard focus everywhere — accessibility floor, non-negotiable */
+  /* Premium keyboard focus */
   :focus-visible {
-    outline: 2px solid var(--color-brand-500);
+    outline: 2px solid var(--color-primary-500);
     outline-offset: 2px;
     border-radius: 4px;
   }
 
+  /* Warm text selection */
   ::selection {
-    background-color: var(--color-brand-200);
-    color: var(--color-brand-900);
+    background-color: var(--color-accent-100);
+    color: var(--color-accent-900);
   }
 }
 
 @layer utilities {
-  /* Thin, unobtrusive scrollbar for the sidebar and dense tables */
+  /* ── Scrollbars ─────────────────────────────────────────────────────── */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-navy-600) transparent;
+    scrollbar-color: var(--color-warm-300) transparent;
   }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--color-navy-600);
+    background-color: var(--color-warm-300);
     border-radius: 999px;
   }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-warm-400);
+  }
 
-  .card-shadow {
-    box-shadow: var(--shadow-soft);
+  /* ── Shadow utilities ───────────────────────────────────────────────── */
+  .shadow-xs        { box-shadow: var(--shadow-xs); }
+  .card-shadow      { box-shadow: var(--shadow-card); }
+  .card-shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-soft      { box-shadow: var(--shadow-soft); }
+  .shadow-modal     { box-shadow: var(--shadow-modal); }
+
+  /* ── Surface utilities ──────────────────────────────────────────────── */
+  .surface          { background-color: var(--color-surface); }
+  .surface-alt      { background-color: var(--color-surface-alt); }
+
+  /* ── Premium glass effect (subtle) ─────────────────────────────────── */
+  .glass {
+    background: rgba(255, 253, 249, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
-  .card-shadow-elevated {
-    box-shadow: var(--shadow-elevated);
+  .glass-dark {
+    background: rgba(43, 74, 60, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
+
+  /* ── Accent gradient for premium highlights ─────────────────────────── */
+  .gradient-brand {
+    background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  }
+  .gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent-400) 0%, var(--color-accent-600) 100%);
+  }
+  .gradient-warm {
+    background: linear-gradient(135deg, var(--color-warm-100) 0%, var(--color-surface-alt) 100%);
+  }
+
+  /* ── Text gradient ──────────────────────────────────────────────────── */
+  .text-gradient-brand {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-400));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent-500), var(--color-accent-400));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────────── */
+  .divider {
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* ── Premium number display ─────────────────────────────────────────── */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
+/* ── Reduced motion ─────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

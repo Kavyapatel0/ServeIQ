@@ -5,27 +5,45 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-button text-sm font-medium " +
-    "transition-all duration-150 disabled:pointer-events-none disabled:opacity-50 " +
-    "active:scale-[0.97]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium " +
+  "transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 " +
+  "active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
   {
     variants: {
       variant: {
         primary:
-          "bg-brand-500 text-white shadow-soft hover:bg-brand-600 focus-visible:outline-brand-500",
+          "bg-primary-500 text-white rounded-button shadow-soft " +
+          "hover:bg-primary-600 focus-visible:ring-primary-500 " +
+          "hover:shadow-card",
         secondary:
-          "bg-navy-900 text-white shadow-soft hover:bg-navy-800",
+          "bg-forest-600 text-white rounded-button shadow-soft " +
+          "hover:bg-forest-700 focus-visible:ring-forest-600",
+        accent:
+          "bg-accent-500 text-white rounded-button shadow-soft " +
+          "hover:bg-accent-600 focus-visible:ring-accent-500",
         outline:
-          "border border-border bg-white text-text-primary hover:bg-app-bg",
-        ghost: "text-text-primary hover:bg-app-bg",
-        danger: "bg-danger text-white shadow-soft hover:bg-red-600",
-        link: "text-brand-600 underline-offset-4 hover:underline p-0 h-auto",
+          "border border-border bg-surface text-text-primary rounded-button " +
+          "hover:bg-warm-200 hover:border-warm-400 focus-visible:ring-primary-500",
+        ghost:
+          "text-text-primary rounded-button " +
+          "hover:bg-warm-200 focus-visible:ring-primary-500",
+        danger:
+          "bg-danger text-white rounded-button shadow-soft " +
+          "hover:bg-red-700 focus-visible:ring-danger",
+        link:
+          "text-primary-500 underline-offset-4 hover:underline p-0 h-auto focus-visible:ring-primary-500",
+        subtle:
+          "bg-primary-50 text-primary-700 rounded-button " +
+          "hover:bg-primary-100 focus-visible:ring-primary-500",
       },
       size: {
-        sm: "h-9 px-3 text-sm",
-        md: "h-10 px-4",
+        xs: "h-7 px-2.5 text-xs",
+        sm: "h-8 px-3 text-sm",
+        md: "h-10 px-4 text-sm",
         lg: "h-11 px-6 text-base",
+        xl: "h-12 px-8 text-base",
         icon: "h-10 w-10",
+        "icon-sm": "h-8 w-8",
       },
     },
     defaultVariants: {

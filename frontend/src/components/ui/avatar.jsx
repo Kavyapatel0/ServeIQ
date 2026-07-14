@@ -12,7 +12,11 @@ export const Avatar = forwardRef(({ className, ...props }, ref) => (
 Avatar.displayName = "Avatar";
 
 export const AvatarImage = forwardRef(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full object-cover", className)}
+    {...props}
+  />
 ));
 AvatarImage.displayName = "AvatarImage";
 
@@ -20,7 +24,8 @@ export const AvatarFallback = forwardRef(({ className, ...props }, ref) => (
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white",
+      "flex h-full w-full items-center justify-center rounded-full",
+      "bg-primary-500 text-xs font-semibold text-white tracking-wide",
       className
     )}
     {...props}

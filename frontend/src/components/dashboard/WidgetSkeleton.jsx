@@ -1,11 +1,14 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/utils/cn";
 
-/** Generic N-row skeleton for widget bodies while their resource is loading. */
-export function WidgetSkeleton({ rows = 3, className = "h-10" }) {
+export function WidgetSkeleton({ rows = 3, className }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className={`w-full ${className}`} />
+        <div
+          key={i}
+          className={cn("animate-pulse rounded-xl bg-warm-200", className ?? "h-10")}
+          style={{ opacity: 1 - i * 0.15 }}
+        />
       ))}
     </div>
   );
