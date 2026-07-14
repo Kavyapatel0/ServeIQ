@@ -6,7 +6,7 @@ import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 import { Breadcrumbs } from "./Breadcrumbs";
 
-const FULL_SCREEN_ROUTES = ["/pos", "/kitchen"];
+const FULL_SCREEN_ROUTES = ["/pos"];
 
 const PAGE_VARIANTS = {
   initial:  { opacity: 0, y: 6 },

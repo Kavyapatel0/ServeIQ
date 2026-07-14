@@ -101,8 +101,9 @@ const AnalyticsModel = {
    * Returns: date, revenue, order_count.
    */
   async getDailySales({ branch_id, days = 30 } = {}) {
+    const safeDays = parseInt(days, 10) || 30;
     const branchFilter = branch_id ? "AND o.branch_id = ?" : "";
-    const params = branch_id ? [Number(days), branch_id] : [Number(days)];
+    const params = branch_id ? [branch_id] : [];
 
     const [rows] = await pool.execute(
       `SELECT
@@ -111,7 +112,7 @@ const AnalyticsModel = {
          COUNT(o.id)                     AS order_count
        FROM Orders o
        WHERE o.status IN ('PAID', 'COMPLETED')
-         AND DATE(o.order_date) >= DATE(NOW() - INTERVAL ? DAY)
+         AND DATE(o.order_date) >= DATE(NOW() - INTERVAL ${safeDays} DAY)
          ${branchFilter}
        GROUP BY DATE(o.order_date)
        ORDER BY sale_date ASC`,
@@ -125,10 +126,9 @@ const AnalyticsModel = {
    * Returns: year, month, revenue, order_count.
    */
   async getMonthlySales({ branch_id, months = 12 } = {}) {
+    const safeMonths = parseInt(months, 10) || 12;
     const branchFilter = branch_id ? "AND o.branch_id = ?" : "";
-    const paramsFinal = branch_id
-      ? [Number(months), branch_id]
-      : [Number(months)];
+    const params = branch_id ? [branch_id] : [];
 
     const [rows] = await pool.execute(
       `SELECT
@@ -139,11 +139,11 @@ const AnalyticsModel = {
          COUNT(o.id)                    AS order_count
        FROM Orders o
        WHERE o.status IN ('PAID', 'COMPLETED')
-         AND o.order_date >= DATE_FORMAT(NOW() - INTERVAL ? MONTH, '%Y-%m-01')
+         AND o.order_date >= DATE_FORMAT(NOW() - INTERVAL ${safeMonths} MONTH, '%Y-%m-01')
          ${branchFilter}
-       GROUP BY YEAR(o.order_date), MONTH(o.order_date)
+       GROUP BY YEAR(o.order_date), MONTH(o.order_date), MONTHNAME(o.order_date)
        ORDER BY sale_year ASC, sale_month ASC`,
-      paramsFinal
+      params
     );
     return rows;
   },
@@ -186,10 +186,11 @@ const AnalyticsModel = {
    * Top selling menu items by total quantity sold.
    */
   async getTopItems({ branch_id, limit = 10 } = {}) {
+    const safeLimit = parseInt(limit, 10) || 10;
     const branchFilter = branch_id ? "AND o.branch_id = ?" : "";
     const params = branch_id
-      ? [branch_id, Number(limit)]
-      : [Number(limit)];
+      ? [branch_id, safeLimit]
+      : [safeLimit];
 
     const [rows] = await pool.execute(
       `SELECT
@@ -206,10 +207,10 @@ const AnalyticsModel = {
        JOIN Orders      o  ON oi.order_id = o.id
        WHERE o.status IN ('PAID', 'COMPLETED')
          ${branchFilter}
-       GROUP BY mi.id
+       GROUP BY mi.id, mi.name, mc.name, mi.selling_price
        ORDER BY total_quantity DESC
-       LIMIT ?`,
-      params
+       LIMIT ${safeLimit}`,
+      branch_id ? [branch_id] : []
     );
     return rows;
   },

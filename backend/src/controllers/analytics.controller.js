@@ -95,7 +95,8 @@ const AnalyticsController = {
       const data = await AnalyticsService.getTopItems(buildParams(req));
       return res.status(200).json({ success: true, data });
     } catch (err) {
-      return res.status(500).json({ success: false, message: "Internal server error" });
+      console.error("getTopItems error:", err.message, err.stack);
+      return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
   },
 

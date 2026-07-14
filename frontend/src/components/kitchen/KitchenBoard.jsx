@@ -3,10 +3,9 @@ import { KitchenColumn } from "./KitchenColumn";
 const COLUMNS = ["PENDING", "PREPARING", "READY", "SERVED"];
 
 /**
- * Desktop: 4 columns side by side. Tablet: 2x2 grid. Mobile: single
- * column, one status at a time isn't required by the spec beyond
- * "single column" — a vertically stacked, horizontally scrollable
- * board reads fine on a phone without extra tab/swipe machinery.
+ * Kanban board: 4 equal-width columns on xl, 2×2 on sm, stacked on mobile.
+ * Each column fills the remaining vertical height so cards scroll
+ * independently without the page scrolling.
  */
 export function KitchenBoard({ orders, onStatusChange, onOpenDetails, updatingId, canAdvance }) {
   const grouped = COLUMNS.reduce((acc, status) => {
@@ -15,7 +14,7 @@ export function KitchenBoard({ orders, onStatusChange, onOpenDetails, updatingId
   }, {});
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:[&>*]:h-[calc(100vh-320px)]">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" style={{ minHeight: "400px" }}>
       {COLUMNS.map((status) => (
         <KitchenColumn
           key={status}

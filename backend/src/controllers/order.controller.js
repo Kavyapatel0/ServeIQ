@@ -9,16 +9,27 @@ const OrderController = {
    */
   async create(req, res) {
     try {
-      const { customer_id, table_id } = req.body;
+      const {
+        customer_id,
+        table_id,
+        items,           // optional: [{ menu_item_id, quantity }]
+        coupon_code,
+        payment_method,
+        amount_tendered,
+        order_type,
+        branch_id: bodyBranchId,
+      } = req.body;
 
-      // Branch is always from the authenticated user's scope
-      const branch_id = req.branchScope ?? req.user.branch_id;
-      if (!branch_id) {
-        return res.status(400).json({
-          success: false,
-          message: "No branch assigned. Contact your administrator.",
-        });
-      }
+      // Branch resolution priority:
+      //   1. req.branchScope (set by enforceBranchScope for non-admins)
+      //   2. branch_id from request body (allows Super Admin to specify)
+      //   3. req.user.branch_id (user's own branch)
+      //   4. Default to branch 1 (Super Admin fallback)
+      const branch_id =
+        req.branchScope ??
+        (bodyBranchId ? parseInt(bodyBranchId) : null) ??
+        req.user.branch_id ??
+        1;
 
       const { orderId, order_number } = await POSService.createOrder({
         customer_id: customer_id || null,
@@ -26,6 +37,61 @@ const OrderController = {
         table_id: table_id || null,
         created_by: req.user.id,
       });
+
+      // If items were provided in the body, add them all in one call
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          await POSService.addOrderItem({
+            order_id: orderId,
+            menu_item_id: item.menu_item_id,
+            quantity: item.quantity || 1,
+            userId: req.user.id,
+            branch_id,
+          });
+        }
+
+        // Apply coupon discount if provided
+        if (coupon_code) {
+          try {
+            const { CouponModel } = require("../models/coupon.model");
+            const coupon = await CouponModel.findByCode(coupon_code);
+            if (coupon && coupon.is_active) {
+              const { pool } = require("../config/db");
+              const [orderRow] = await pool.execute(
+                "SELECT subtotal FROM Orders WHERE id = ?", [orderId]
+              );
+              const subtotal = parseFloat(orderRow[0]?.subtotal ?? 0);
+              let discountAmt = 0;
+              if (coupon.discount_type === "PERCENTAGE") {
+                discountAmt = parseFloat(((subtotal * coupon.discount) / 100).toFixed(2));
+              } else {
+                discountAmt = parseFloat(Math.min(coupon.discount, subtotal).toFixed(2));
+              }
+              const newGrandTotal = parseFloat((
+                subtotal * 1.05 - discountAmt
+              ).toFixed(2));
+              await pool.execute(
+                "UPDATE Orders SET discount_amount = ?, grand_total = ? WHERE id = ?",
+                [discountAmt, Math.max(0, newGrandTotal), orderId]
+              );
+            }
+          } catch (couponErr) {
+            console.warn("Coupon application failed (non-fatal):", couponErr.message);
+          }
+        }
+
+        // Send to kitchen automatically
+        await POSService.sendToKitchen(orderId, req.user.id);
+
+        // Process payment if method was provided
+        if (payment_method) {
+          await POSService.processPayment({
+            order_id: orderId,
+            payment_method: payment_method.toUpperCase(),
+            userId: req.user.id,
+          });
+        }
+      }
 
       const order = await OrderModel.findById(orderId);
       return res.status(201).json({

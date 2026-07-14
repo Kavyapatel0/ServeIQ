@@ -4,40 +4,40 @@ import { Clock, User, ChefHat } from "lucide-react";
 import { KitchenTimer } from "./KitchenTimer";
 import { StatusButton } from "./StatusButton";
 import { formatDateTime } from "@/utils/format";
+import { cn } from "@/utils/cn";
 
 const STATUS_CONFIG = {
-  PENDING: { color: "border-l-gray-400 bg-white" },
-  PREPARING: { color: "border-l-amber-400 bg-amber-50/30" },
-  READY: { color: "border-l-green-400 bg-green-50/30" },
-  SERVED: { color: "border-l-blue-400 bg-blue-50/30" },
+  PENDING:   { leftBar: "border-l-warm-400",    bg: "bg-surface" },
+  PREPARING: { leftBar: "border-l-warning",      bg: "bg-warning-bg/30" },
+  READY:     { leftBar: "border-l-success",      bg: "bg-success-bg/30" },
+  SERVED:    { leftBar: "border-l-primary-400",  bg: "bg-primary-50/40" },
 };
 
-/**
- * `order` here is a flat row from GET /api/kitchen/orders — it does
- * NOT include line items (only the single-order endpoint does). The
- * card shows what the queue view actually has (order #, table,
- * customer/waiter, elapsed time, chef if assigned); tapping the card
- * opens a detail dialog that fetches the full item list on demand.
- */
 export function KitchenCard({ order, onStatusChange, onOpenDetails, loading, canAdvance }) {
-  const config = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
+  const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      exit={{ opacity: 0, scale: 0.92 }}
       transition={{ duration: 0.2 }}
       onClick={() => onOpenDetails(order)}
-      className={`cursor-pointer rounded-xl border border-border border-l-4 ${config.color} p-4 shadow-sm transition-shadow hover:shadow-md`}
+      className={cn(
+        "cursor-pointer rounded-xl border border-l-4 border-warm-200 p-4",
+        "shadow-soft transition-all duration-150 hover:card-shadow-elevated hover:border-warm-300",
+        cfg.leftBar, cfg.bg
+      )}
     >
-      {/* Header row */}
+      {/* Header row: order # + table badge + timer */}
       <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <span className="text-base font-bold text-text-primary">{order.order_number}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-bold text-text-primary">
+            {order.order_number}
+          </span>
           {order.table_number && (
-            <span className="ml-2 rounded-full bg-navy-800 px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="rounded-full bg-forest-600 px-2 py-0.5 text-[10px] font-bold text-white">
               T{order.table_number}
             </span>
           )}
@@ -45,45 +45,49 @@ export function KitchenCard({ order, onStatusChange, onOpenDetails, loading, can
         <KitchenTimer createdAt={order.created_at} status={order.status} />
       </div>
 
-      {/* Customer / waiter */}
-      <div className="mb-2 space-y-0.5">
+      {/* People info */}
+      <div className="mb-2.5 space-y-1">
         {order.customer_name && (
-          <p className="truncate text-xs text-text-secondary">
-            <User className="mr-1 inline h-3 w-3" />
+          <p className="flex items-center gap-1.5 text-xs text-text-secondary truncate">
+            <User className="h-3 w-3 shrink-0 text-text-disabled" />
             {order.customer_name}
           </p>
         )}
         {order.waiter_name && (
-          <p className="truncate text-xs text-text-secondary">Waiter: {order.waiter_name}</p>
+          <p className="text-xs text-text-secondary truncate pl-4">
+            Waiter: {order.waiter_name}
+          </p>
         )}
         {order.chef_name && (
-          <p className="truncate text-xs text-text-secondary">
-            <ChefHat className="mr-1 inline h-3 w-3" />
+          <p className="flex items-center gap-1.5 text-xs text-text-secondary truncate">
+            <ChefHat className="h-3 w-3 shrink-0 text-text-disabled" />
             {order.chef_name}
           </p>
         )}
       </div>
 
-      {/* Notes */}
+      {/* Special notes */}
       {order.notes && (
-        <p className="mb-3 rounded-lg bg-amber-50 px-2 py-1 text-xs italic text-amber-600">
-          📝 {order.notes}
-        </p>
+        <div className="mb-3 rounded-lg border border-warning/20 bg-warning-bg px-2.5 py-1.5">
+          <p className="text-[11px] italic text-warning-text">📝 {order.notes}</p>
+        </div>
       )}
 
-      {/* Time */}
-      <p className="mb-3 text-[11px] text-text-secondary">
-        <Clock className="mr-1 inline h-3 w-3" />
+      {/* Timestamp */}
+      <p className="mb-3 flex items-center gap-1 text-[11px] text-text-disabled">
+        <Clock className="h-3 w-3" />
         {formatDateTime(order.created_at)}
       </p>
 
-      {/* Status button */}
-      <StatusButton
-        currentStatus={order.status}
-        onUpdate={(newStatus) => onStatusChange(order, newStatus)}
-        loading={loading}
-        canAdvance={canAdvance}
-      />
+      {/* Action button */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <StatusButton
+          currentStatus={order.status}
+          onUpdate={(newStatus) => onStatusChange(order, newStatus)}
+          loading={loading}
+          canAdvance={canAdvance}
+        />
+      </div>
     </motion.div>
   );
 }
