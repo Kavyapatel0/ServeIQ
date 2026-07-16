@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { PageHeader }  from "@/components/common/PageHeader";
 import { StatCard }    from "@/components/common/StatCard";
 import { EmptyState }  from "@/components/common/EmptyState";
+import { Pagination }  from "@/components/common/Pagination";
 import { Button }      from "@/components/ui/button";
 import { Badge }       from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
@@ -175,21 +176,23 @@ function InventoryDashboardTab({ lowStock, loading }) {
   );
 }
 
-/* ── Ingredients Tab ─────────────────────────────────────────────────── */
+/* ── Ingredients Tab ─────────────────────────────────────────── */
 function IngredientsTab() {
-  const [items,     setItems]     = useState([]);
+  const [allItems,  setAllItems]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [search,    setSearch]    = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editing,   setEditing]   = useState(null);
   const [form,      setForm]      = useState({ name: "", unit: "kg", minimum_stock: "", cost_price: "" });
   const [saving,    setSaving]    = useState(false);
+  const [page,      setPage]      = useState(1);
+  const PAGE_SIZE = 12;
 
   const load = useCallback(() => {
     setLoading(true);
     getIngredients({ search: search || undefined })
-      .then((d) => setItems(d?.ingredients ?? []))
-      .catch(() => setItems([]))
+      .then((d) => { setAllItems(d?.ingredients ?? []); setPage(1); })
+      .catch(() => setAllItems([]))
       .finally(() => setLoading(false));
   }, [search]);
   useEffect(() => { load(); }, [load]);
@@ -210,6 +213,9 @@ function IngredientsTab() {
     try { await deleteIngredient(id); toast.success("Deleted."); load(); } catch {}
   };
 
+  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  const items      = allItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -220,7 +226,7 @@ function IngredientsTab() {
         <Button onClick={openCreate}><Plus className="h-4 w-4" /> Add Ingredient</Button>
       </div>
 
-      {loading ? <SectionSkeleton rows={5} /> : items.length === 0 ? (
+      {loading ? <SectionSkeleton rows={5} /> : allItems.length === 0 ? (
         <EmptyState icon={Package} title="No ingredients yet" description="Add your first ingredient to start tracking stock." actionLabel="Add Ingredient" onAction={openCreate} />
       ) : (
         <div className="overflow-hidden rounded-card border border-warm-200 bg-surface card-shadow">
@@ -250,6 +256,14 @@ function IngredientsTab() {
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-warm-100 px-5 py-3">
+              <p className="text-xs text-text-secondary">
+                {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, allItems.length)} of {allItems.length} ingredients
+              </p>
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
         </div>
       )}
 

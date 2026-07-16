@@ -44,7 +44,7 @@ INSERT IGNORE INTO Users (id, role_id, branch_id, name, email, password, is_acti
   (29, 6, 4, 'Ajay Verma',       'inventory@branch4.com',   '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi', TRUE),
   (30, 6, 5, 'Preeti Agarwal',   'inventory@branch5.com',   '$2b$12$APs4l.MhHEab/1EnJfHw6OJD6nVIIGc/Y9U96Xhu08TtAMUvm5uMi', TRUE);
 
--- â”€â”€â”€ Additional Restaurant Tables (40 total) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- â”€â”€â”€ Additional Restaurant Tables (40 total) â”€âgi”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 INSERT IGNORE INTO Restaurant_Tables (id, table_number, capacity, branch_id, status) VALUES
   -- Branch 1 (Downtown) â€” 10 tables
   (7,  'T3',  4, 2, 'AVAILABLE'), (8,  'T4',  6, 2, 'AVAILABLE'),

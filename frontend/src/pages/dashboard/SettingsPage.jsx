@@ -2,9 +2,9 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Bell, Palette, Shield, Info, ChevronRight,
-  Check, Monitor, Sun, Moon, Globe, Volume2,
+  Check, Monitor, Sun, Moon, Volume2,
   Mail, Smartphone, Clock, Database, LogOut,
-  UtensilsCrossed, Heart,
+  UtensilsCrossed, Heart, Building2, MapPin, Phone, ShieldCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,11 +16,13 @@ import { cn } from "@/utils/cn";
 
 /* ─── Sidebar nav items ───────────────────────────────────────── */
 const NAV = [
-  { id: "profile",       label: "Profile",       icon: User    },
-  { id: "appearance",    label: "Appearance",     icon: Palette },
-  { id: "notifications", label: "Notifications",  icon: Bell    },
-  { id: "security",      label: "Security",       icon: Shield  },
-  { id: "about",         label: "About ServeIQ",  icon: Info    },
+  { id: "profile",        label: "Profile",           icon: User      },
+  { id: "appearance",     label: "Appearance",         icon: Palette   },
+  { id: "notifications",  label: "Notifications",      icon: Bell      },
+  { id: "restaurant",     label: "Restaurant Info",    icon: UtensilsCrossed },
+  { id: "branch",         label: "Branch Info",        icon: Building2 },
+  { id: "security",       label: "Security",           icon: Shield    },
+  { id: "about",          label: "About ServeIQ",      icon: Info      },
 ];
 
 /* ─── Reusable primitives ─────────────────────────────────────── */
@@ -120,9 +122,8 @@ function ProfileSection({ user }) {
 }
 
 function AppearanceSection() {
-  const [theme,    setTheme]    = useState("system");
-  const [density,  setDensity]  = useState("comfortable");
-  const [language, setLanguage] = useState("en");
+  const [theme,   setTheme]   = useState("system");
+  const [density, setDensity] = useState("comfortable");
 
   return (
     <div className="space-y-5">
@@ -137,10 +138,10 @@ function AppearanceSection() {
         </div>
       </SettingSection>
 
-      <SettingSection title="Display" description="Adjust layout density and language preferences.">
-        <SettingRow label="Interface Density" description="Choose how compact the UI feels">
+      <SettingSection title="Display" description="Adjust how dense the interface feels.">
+        <SettingRow label="Interface Density" description="Choose how compact the UI feels" borderBottom={false}>
           <div className="flex rounded-input border border-warm-200 overflow-hidden">
-            {["comfortable", "compact"].map((v) => (
+            {["comfortable", "compact"].map(v => (
               <button
                 key={v}
                 onClick={() => setDensity(v)}
@@ -152,21 +153,6 @@ function AppearanceSection() {
                 {v}
               </button>
             ))}
-          </div>
-        </SettingRow>
-
-        <SettingRow label="Language" description="Platform interface language">
-          <div className="flex items-center gap-2 rounded-input border border-warm-200 bg-warm-50 px-3 py-1.5">
-            <Globe className="h-3.5 w-3.5 text-text-secondary" />
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-transparent text-xs font-medium text-text-primary outline-none"
-            >
-              <option value="en">English</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="gu">ગુજરાતી (Gujarati)</option>
-            </select>
           </div>
         </SettingRow>
       </SettingSection>
@@ -350,6 +336,78 @@ function AboutSection() {
   );
 }
 
+function RestaurantInfoSection() {
+  const info = [
+    { label: "Restaurant Name",     value: "The Grand Spice Fine Dining" },
+    { label: "Cuisine Type",        value: "Multi-Cuisine Fine Dining"   },
+    { label: "City",                value: "Ahmedabad, Gujarat, India"   },
+    { label: "GST Number",          value: "24AAAAA0000A1Z5"             },
+    { label: "Operating Hours",     value: "12:00 PM – 11:00 PM"        },
+    { label: "Currency",            value: "Indian Rupee (₹ INR)"        },
+    { label: "Tax Rate",            value: "5% GST"                     },
+  ];
+  return (
+    <div className="space-y-5">
+      <SettingSection title="Restaurant Information" description="Core details about your restaurant registered in ServeIQ.">
+        {info.map(({ label, value }) => (
+          <SettingRow key={label} label={label}>
+            <span className="text-sm text-text-secondary text-right max-w-[220px] truncate">{value}</span>
+          </SettingRow>
+        ))}
+        <div className="py-3">
+          <p className="text-xs text-text-disabled">Restaurant details are managed by Super Admin. Contact support to update.</p>
+        </div>
+      </SettingSection>
+    </div>
+  );
+}
+
+function BranchInfoSection({ user }) {
+  const branchData = [
+    { label: "Branch Name",     value: user?.branch_id ? `Branch #${user.branch_id}` : "All Branches (Super Admin)",   icon: Building2 },
+    { label: "Branch ID",       value: user?.branch_id ? `#${user.branch_id}` : "N/A",  icon: Database  },
+    { label: "Your Role",       value: user?.role ?? "—",        icon: Shield    },
+    { label: "Access Level",    value: user?.branch_id ? "Branch-scoped" : "Platform-wide",  icon: Shield },
+  ];
+  return (
+    <div className="space-y-5">
+      <SettingSection title="Branch Information" description="Your assigned branch and access scope within ServeIQ.">
+        {branchData.map(({ label, value, icon: Icon }) => (
+          <SettingRow key={label} label={label}>
+            <div className="flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 text-text-disabled" strokeWidth={1.75} />
+              <span className="text-sm font-medium text-text-secondary">{value}</span>
+            </div>
+          </SettingRow>
+        ))}
+        <div className="py-3">
+          <p className="text-xs text-text-disabled">Branch assignments are managed by Super Admin from the Administration module.</p>
+        </div>
+      </SettingSection>
+
+      <SettingSection title="Permissions Summary" description="Key capabilities granted to your role.">
+        <div className="py-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {[
+            "View Dashboard", "Place Orders", "View Analytics", "Manage Kitchen",
+            "View Inventory", "Access CRM", "Manage Users", "View Reports",
+          ].map((perm, i) => {
+            const granted = i < (user?.role === "Super Admin" ? 8 : user?.role === "Branch Manager" ? 6 : user?.role === "Cashier" ? 3 : user?.role === "Chef" ? 2 : user?.role === "Waiter" ? 2 : 4);
+            return (
+              <div key={perm} className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                granted ? "bg-success-bg text-success-text" : "bg-warm-100 text-text-disabled line-through"
+              )}>
+                <div className={cn("h-2 w-2 rounded-full", granted ? "bg-success" : "bg-warm-300")} />
+                {perm}
+              </div>
+            );
+          })}
+        </div>
+      </SettingSection>
+    </div>
+  );
+}
+
 /* ─── Main SettingsPage ───────────────────────────────────────── */
 export function SettingsPage() {
   const [activeNav, setActiveNav] = useState("profile");
@@ -366,6 +424,8 @@ export function SettingsPage() {
     profile:       <ProfileSection user={user} />,
     appearance:    <AppearanceSection />,
     notifications: <NotificationsSection />,
+    restaurant:    <RestaurantInfoSection />,
+    branch:        <BranchInfoSection user={user} />,
     security:      <SecuritySection user={user} onLogout={handleLogout} />,
     about:         <AboutSection />,
   };

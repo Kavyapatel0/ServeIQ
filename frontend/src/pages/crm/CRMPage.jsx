@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageHeader }  from "@/components/common/PageHeader";
 import { StatCard }    from "@/components/common/StatCard";
 import { EmptyState }  from "@/components/common/EmptyState";
+import { Pagination }  from "@/components/common/Pagination";
 import { Button }      from "@/components/ui/button";
 import { Badge }       from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
@@ -87,12 +88,14 @@ function CustomersTab() {
   const [search,    setSearch]    = useState(""); const [showModal, setShowModal] = useState(false);
   const [editing,   setEditing]   = useState(null); const [selected, setSelected] = useState(null);
   const [form,      setForm]      = useState({ name: "", phone: "", email: "" }); const [saving, setSaving] = useState(false);
+  const [page,      setPage]      = useState(1);
+  const PAGE_SIZE = 10;
 
   const load = useCallback(() => {
     setLoading(true);
-    getCustomers({ search: search || undefined, limit: 50 }).then(d => setCustomers(d?.customers ?? [])).catch(() => setCustomers([])).finally(() => setLoading(false));
+    getCustomers({ search: search || undefined, limit: 200 }).then(d => setCustomers(d?.customers ?? [])).catch(() => setCustomers([])).finally(() => setLoading(false));
   }, [search]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setPage(1); }, [load]);
 
   const openCreate = () => { setEditing(null); setForm({ name: "", phone: "", email: "" }); setShowModal(true); };
   const openEdit   = (c) => { setEditing(c); setForm({ name: c.name, phone: c.phone ?? "", email: c.email ?? "" }); setShowModal(true); };
@@ -101,6 +104,9 @@ function CustomersTab() {
     try { editing ? await updateCustomer(editing.id, form) : await createCustomer(form); toast.success(editing ? "Customer updated." : "Customer created."); setShowModal(false); load(); }
     catch {} finally { setSaving(false); }
   };
+
+  const totalPages = Math.max(1, Math.ceil(customers.length / PAGE_SIZE));
+  const pageRows   = customers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -122,7 +128,7 @@ function CustomersTab() {
               <tr>{["Customer","Phone","Email","Visits","Loyalty Points","Joined",""].map(h => <th key={h} className="px-5 py-3 text-left">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
-              {customers.map(c => (
+              {pageRows.map(c => (
                 <tr key={c.id} className="cursor-pointer transition-colors hover:bg-warm-50" onClick={() => setSelected(c)}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -131,7 +137,7 @@ function CustomersTab() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-text-secondary">{c.phone ?? "—"}</td>
-                  <td className="max-w-[180px] truncate px-5 py-3.5 text-text-secondary">{c.email ?? "—"}</td>
+                  <td className="max-w-[160px] truncate px-5 py-3.5 text-text-secondary">{c.email ?? "—"}</td>
                   <td className="px-5 py-3.5 text-center font-semibold tabular-nums">{c.total_visits ?? 0}</td>
                   <td className="px-5 py-3.5">
                     <div className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5">
@@ -147,6 +153,14 @@ function CustomersTab() {
               ))}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-warm-100 px-5 py-3">
+              <p className="text-xs text-text-secondary">
+                Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, customers.length)} of {customers.length} customers
+              </p>
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
         </div>
       )}
 

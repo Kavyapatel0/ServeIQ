@@ -268,9 +268,12 @@ function SalesTab({ dateRange }) {
 
 /* ── Business Tab ────────────────────────────────────────────────────── */
 function BusinessTab({ dateRange }) {
-  const [peakHours,  setPeakHours]  = useState([]); const [topItems, setTopItems] = useState([]);
-  const [payMethods, setPayMethods] = useState([]); const [loading,  setLoading]  = useState(true);
+  const [peakHours,  setPeakHours]  = useState([]);
+  const [topItems,   setTopItems]   = useState([]);
+  const [payMethods, setPayMethods] = useState([]);
+  const [loading,    setLoading]    = useState(true);
   const params = getDateParams(dateRange);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -278,47 +281,94 @@ function BusinessTab({ dateRange }) {
       getTopSellingItems({ ...params, limit: 10 }).catch(() => ({ items: [] })),
       getPaymentMethodReport(params).catch(() => ({ methods: [] })),
     ]).then(([ph, top, pay]) => {
-      setPeakHours(ph?.peak_hours ?? []); setTopItems(top?.items ?? []); setPayMethods(pay?.methods ?? []);
+      setPeakHours(ph?.peak_hours ?? []);
+      setTopItems(top?.items ?? []);
+      setPayMethods(pay?.methods ?? []);
     }).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
+
   if (loading) return <AnalyticsSkeleton />;
+
+  // Normalize top items — backend returns item_name / total_quantity
+  const normalizedItems = topItems.slice(0, 10).map(item => ({
+    ...item,
+    name:          item.item_name   ?? item.name   ?? "Unknown",
+    total_ordered: Number(item.total_quantity ?? item.total_ordered ?? 0),
+    revenue:       Number(item.total_revenue  ?? 0),
+  }));
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Peak Hours */}
         <ChartCard title="Peak Hours" subtitle="Order volume by hour of day">
           {peakHours.length === 0 ? <NoData /> : (
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={peakHours} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
+              <BarChart data={peakHours} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.5} vertical={false} />
                 <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }} formatter={(v) => [v, "Orders"]} />
-                <Bar dataKey="order_count" radius={[5, 5, 0, 0]}>
-                  {peakHours.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                <Tooltip
+                  contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }}
+                  formatter={(v) => [v, "Orders"]}
+                  labelFormatter={h => `Hour: ${h}`}
+                />
+                <Bar dataKey="order_count" radius={[5, 5, 0, 0]} name="Orders">
+                  {peakHours.map((_, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </ChartCard>
 
-        <ChartCard title="Payment Methods" subtitle="Distribution of payment types">
+        {/* Payment Methods — donut + legend */}
+        <ChartCard title="Payment Methods" subtitle="Revenue & transaction share by method">
           {payMethods.length === 0 ? <NoData /> : (
-            <div className="flex items-center gap-6 pt-4">
-              <ResponsiveContainer width="50%" height={200}>
+            <div className="flex items-center gap-6">
+              <ResponsiveContainer width="50%" height={210}>
                 <PieChart>
-                  <Pie data={payMethods} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="count" paddingAngle={4}>
-                    {payMethods.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  <Pie
+                    data={payMethods}
+                    cx="50%" cy="50%"
+                    innerRadius={52} outerRadius={82}
+                    dataKey="count"
+                    paddingAngle={3}
+                    label={({ pct }) => pct > 5 ? `${pct}%` : ""}
+                    labelLine={false}
+                  >
+                    {payMethods.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }} formatter={(v, n) => [`${v} orders`, n]} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }}
+                    formatter={(v, n) => [`${v} txns`, n]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex-1 space-y-2.5">
+              <div className="flex-1 space-y-3">
                 {payMethods.map((m, i) => (
-                  <div key={m.method} className="flex items-center gap-2">
-                    <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    <span className="flex-1 text-sm text-text-primary">{m.method}</span>
-                    <span className="text-sm font-bold text-text-primary tabular-nums">{m.count}</span>
+                  <div key={m.method}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                        <span className="text-sm font-semibold text-text-primary">{m.method}</span>
+                      </div>
+                      <span className="text-xs font-bold text-text-secondary tabular-nums">{m.count} txns</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-warm-200">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${m.pct ?? 0}%`,
+                          background: CHART_COLORS[i % CHART_COLORS.length],
+                        }}
+                      />
+                    </div>
+                    <p className="mt-0.5 text-right text-[10px] text-text-disabled">{m.pct ?? 0}%</p>
                   </div>
                 ))}
               </div>
@@ -327,19 +377,76 @@ function BusinessTab({ dateRange }) {
         </ChartCard>
       </div>
 
-      <ChartCard title="Top Selling Items" subtitle="Items ranked by order volume">
-        {topItems.length === 0 ? <NoData /> : (
-          <ResponsiveContainer width="100%" height={Math.min(topItems.length * 38, 340)}>
-            <BarChart data={topItems.slice(0, 10)} layout="vertical" margin={{ top: 5, right: 24, left: 4, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.5} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "#4a4039" }} width={110} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }} formatter={(v) => [v, "Orders"]} />
-              <Bar dataKey="total_ordered" radius={[0, 5, 5, 0]}>
-                {topItems.slice(0, 10).map((_, i) => <Cell key={i} fill={i === 0 ? "#355c4b" : i === 1 ? "#4d7a62" : "#7a9e6e"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Top Selling Items — full-width horizontal bar chart */}
+      <ChartCard title="Top Selling Items" subtitle="Items ranked by total quantity sold">
+        {normalizedItems.length === 0 ? <NoData /> : (
+          <>
+            {/* Legend */}
+            <div className="mb-4 flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm bg-primary-500" />
+                <span className="text-xs text-text-secondary">Orders (qty)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm bg-accent-400" />
+                <span className="text-xs text-text-secondary">Revenue (₹)</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={Math.max(normalizedItems.length * 42, 280)}>
+              <BarChart
+                data={normalizedItems}
+                layout="vertical"
+                margin={{ top: 4, right: 60, left: 8, bottom: 4 }}
+                barCategoryGap="22%"
+                barGap={4}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.4} horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11, fill: "#72675c" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickCount={5}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: "#4a4039", fontWeight: 500 }}
+                  width={130}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={v => v.length > 18 ? v.slice(0, 17) + "…" : v}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9", boxShadow: "0 4px 16px rgba(31,27,24,0.10)" }}
+                  cursor={{ fill: "rgba(53,92,75,0.05)" }}
+                  formatter={(v, name) =>
+                    name === "total_ordered"
+                      ? [`${v} orders`, "Quantity Sold"]
+                      : [formatCurrency(v), "Revenue"]
+                  }
+                />
+                <Bar
+                  dataKey="total_ordered"
+                  name="total_ordered"
+                  radius={[0, 5, 5, 0]}
+                  label={{ position: "right", fontSize: 11, fill: "#72675c", formatter: v => v }}
+                >
+                  {normalizedItems.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={
+                        i === 0 ? "#355c4b" :
+                        i === 1 ? "#4d7a62" :
+                        i === 2 ? "#7a9e6e" :
+                        "#a3bfa0"
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </>
         )}
       </ChartCard>
     </div>

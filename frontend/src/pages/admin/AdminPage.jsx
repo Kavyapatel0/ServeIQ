@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageHeader }  from "@/components/common/PageHeader";
 import { StatCard }    from "@/components/common/StatCard";
 import { EmptyState }  from "@/components/common/EmptyState";
+import { Pagination }  from "@/components/common/Pagination";
 import { Button }      from "@/components/ui/button";
 import { Badge }       from "@/components/ui/badge";
 import { formatDate }  from "@/utils/format";
@@ -97,6 +98,8 @@ function UsersTab({ currentUserId }) {
   const [showModal, setShowModal] = useState(false); const [editing, setEditing]  = useState(null);
   const [showPw,    setShowPw]    = useState(false); const [saving,  setSaving]   = useState(false);
   const [form,      setForm]      = useState({ name: "", email: "", phone: "", role: "Cashier", branch_id: "", password: "" });
+  const [page,      setPage]      = useState(1);
+  const PAGE_SIZE = 10;
 
   const load = useCallback(() => {
     setLoading(true);
@@ -107,7 +110,7 @@ function UsersTab({ currentUserId }) {
       setUsers(u?.users ?? []); setBranches(b?.branches ?? []);
     }).finally(() => setLoading(false));
   }, [search]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setPage(1); }, [load]);
 
   const openCreate = () => { setEditing(null); setForm({ name: "", email: "", phone: "", role: "Cashier", branch_id: branches[0]?.id ?? "", password: "" }); setShowModal(true); };
   const openEdit   = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, phone: u.phone ?? "", role: u.role, branch_id: u.branch_id ?? "", password: "" }); setShowModal(true); };
@@ -127,6 +130,9 @@ function UsersTab({ currentUserId }) {
     if (!confirm("Delete this user? This cannot be undone.")) return;
     try { await deleteUser(id); toast.success("User deleted."); load(); } catch {}
   };
+
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const pageUsers  = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -148,7 +154,7 @@ function UsersTab({ currentUserId }) {
               <tr>{["User","Email","Role","Branch","Joined",""].map(h => <th key={h} className="px-5 py-3 text-left">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
-              {users.map(u => (
+              {pageUsers.map(u => (
                 <tr key={u.id} className={cn("transition-colors hover:bg-warm-50", u.id === currentUserId && "bg-primary-50/30")}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -173,6 +179,14 @@ function UsersTab({ currentUserId }) {
               ))}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-warm-100 px-5 py-3">
+              <p className="text-xs text-text-secondary">
+                {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, users.length)} of {users.length} users
+              </p>
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
         </div>
       )}
 

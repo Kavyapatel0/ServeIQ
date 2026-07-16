@@ -204,6 +204,42 @@ export function ProfilePage() {
               ))}
             </div>
           </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.10 }}
+            className="rounded-card border border-warm-200 bg-surface card-shadow p-5"
+          >
+            <h3 className="mb-4 text-sm font-semibold text-text-primary flex items-center gap-2">
+              <LogIn className="h-4 w-4 text-primary-500" strokeWidth={1.75} />
+              Recent Logins
+            </h3>
+            <div className="space-y-2.5">
+              {[
+                { device: "Chrome · Windows 11", location: "Ahmedabad", time: "Active now",   icon: "🖥", current: true  },
+                { device: "Safari · iPhone 15",  location: "Ahmedabad", time: "2 days ago",   icon: "📱", current: false },
+                { device: "Chrome · MacBook",    location: "Ahmedabad", time: "5 days ago",   icon: "💻", current: false },
+              ].map((s, i) => (
+                <div key={i} className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3 py-2.5",
+                  s.current ? "border-primary-200 bg-primary-50/60" : "border-warm-100 bg-warm-50"
+                )}>
+                  <span className="text-base">{s.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-text-primary truncate">{s.device}</p>
+                    <p className="text-[11px] text-text-secondary">{s.location} · {s.time}</p>
+                  </div>
+                  {s.current && (
+                    <span className="shrink-0 rounded-full bg-success-bg px-2 py-0.5 text-[10px] font-bold text-success-text">
+                      Now
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
 
         {/* ── Right: Details + Security ─────────────────────────── */}
