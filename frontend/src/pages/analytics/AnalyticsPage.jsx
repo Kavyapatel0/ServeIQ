@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import {
   DollarSign, ShoppingBag, TrendingUp, Users, Clock,
-  BarChart3, Utensils, CreditCard,
+  BarChart3, Utensils, CreditCard, RefreshCw, Zap,
 } from "lucide-react";
 
 import { PageHeader }  from "@/components/common/PageHeader";
@@ -14,6 +14,7 @@ import { StatCard }    from "@/components/common/StatCard";
 import { EmptyState }  from "@/components/common/EmptyState";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { cn }          from "@/utils/cn";
+import { useSocket }   from "@/contexts/SocketContext";
 import {
   getAnalyticsOverview, getSalesSummary, getDailySales, getMonthlySales,
   getPeakHours, getTopSellingItems, getPaymentMethodReport,
@@ -455,45 +456,128 @@ function BusinessTab({ dateRange }) {
 
 /* ── Customer Analytics Tab ──────────────────────────────────────────── */
 function CustomerTab({ dateRange }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const params = getDateParams(dateRange);
+  const [data, setData]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [liveAlert, setLiveAlert] = useState(null);   // { name, timestamp }
+  const alertTimer                = useRef(null);
+  const socket                    = useSocket();
+  const params                    = getDateParams(dateRange);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     getCustomerAnalytics(params)
-      .then(setData)
+      .then(d => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
+  // Initial load + reload when date range changes
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Live socket listener — auto-refresh when any new customer registers
+  useEffect(() => {
+    const handleNewCustomer = (payload) => {
+      // Show a brief live-alert badge
+      setLiveAlert(payload);
+      clearTimeout(alertTimer.current);
+      alertTimer.current = setTimeout(() => setLiveAlert(null), 6000);
+      // Silently refetch analytics in background
+      getCustomerAnalytics(params)
+        .then(d => { if (d) setData(d); })
+        .catch(() => {});
+    };
+
+    socket.on("customer_registered", handleNewCustomer);
+    return () => {
+      socket.off("customer_registered", handleNewCustomer);
+      clearTimeout(alertTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, dateRange]);
+
   if (loading) return <AnalyticsSkeleton />;
+
+  // Only show full empty state when API truly failed (null)
   if (!data) return (
     <EmptyState
       icon={Users}
       title="No customer data"
-      description="Customer analytics will appear once orders are placed."
+      description="Customer analytics will appear once customers are registered."
     />
   );
 
-  // Normalise field names — backend may return either naming convention
-  const totalCustomers     = data.total_customers     ?? 0;
-  const newCustomers       = data.new_customers       ?? data.new_this_month      ?? 0;
-  const returningCustomers = data.returning_customers ?? 0;
-  const avgFrequency       = data.avg_visit_frequency ?? data.average_visits      ?? 0;
+  // Normalise field names from backend response
+  const totalCustomers     = Number(data.total_customers     ?? 0);
+  const activeCustomers    = Number(data.active_customers    ?? totalCustomers);
+  const newCustomers       = Number(data.new_customers       ?? data.new_this_month      ?? 0);
+  const returningCustomers = Number(data.returning_customers ?? 0);
+  const avgFrequency       = Number(data.avg_visit_frequency ?? data.average_visits      ?? 0);
+  const totalLoyalty       = Number(data.total_loyalty_points ?? 0);
+  const avgLoyalty         = Number(data.avg_loyalty_points   ?? 0);
   const growthData         = data.growth_data         ?? [];
   const topSpenders        = data.top_spenders        ?? [];
+  const genderBreakdown    = data.gender_breakdown    ?? [];
+  const loyaltyTiers       = data.loyalty_tiers       ?? [];
+  const recentCustomers    = data.recent_customers    ?? [];
+
+  const GENDER_COLORS = ["#355c4b", "#c46a2d", "#7a9e6e"];
+  const TIER_COLORS   = { Gold: "#c9a227", Silver: "#8a9bb0", Bronze: "#a0623a", New: "#7a9e6e" };
+
+  const retentionRate = totalCustomers > 0
+    ? Math.round((returningCustomers / totalCustomers) * 100)
+    : 0;
 
   const stats = [
-    { label: "Total Customers",     value: formatNumber(totalCustomers),     icon: Users,      accent: "brand"   },
-    { label: "New This Month",      value: formatNumber(newCustomers),       icon: TrendingUp, accent: "success" },
-    { label: "Returning Customers", value: formatNumber(returningCustomers), icon: Users,      accent: "info"    },
-    { label: "Avg Visit Frequency", value: `${avgFrequency}×`,              icon: Clock,      accent: "accent"  },
+    { label: "Total Customers",     value: formatNumber(totalCustomers),                          icon: Users,      accent: "brand"   },
+    { label: "New This Month",      value: formatNumber(newCustomers),                             icon: TrendingUp, accent: "success" },
+    { label: "Returning Customers", value: formatNumber(returningCustomers),                       icon: Users,      accent: "info"    },
+    { label: "Avg Visit Frequency", value: `${Number(avgFrequency).toFixed(1)}×`,                 icon: Clock,      accent: "accent"  },
   ];
 
   return (
     <div className="space-y-6">
+
+      {/* Live alert banner — appears when customer_registered fires */}
+      <AnimatePresence>
+        {liveAlert && (
+          <motion.div
+            key="live-alert"
+            initial={{ opacity: 0, y: -12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0,  scale: 1    }}
+            exit={{    opacity: 0, y: -8,  scale: 0.97 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3"
+          >
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+            </span>
+            <p className="text-sm font-semibold text-green-700">
+              New customer registered
+              {liveAlert.name ? `: ${liveAlert.name}` : ""}
+            </p>
+            <span className="ml-auto flex items-center gap-1 text-xs text-green-600">
+              <Zap className="h-3 w-3" /> Live update
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header row with manual refresh button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary">Customer Intelligence</p>
+          <h2 className="text-lg font-bold text-text-primary">{formatNumber(totalCustomers)} Customers</h2>
+        </div>
+        <button
+          onClick={fetchData}
+          className="flex items-center gap-1.5 rounded-lg border border-warm-200 bg-surface px-3 py-1.5 text-xs font-semibold text-text-secondary shadow-soft transition-all hover:text-primary-600 hover:border-primary-300"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </button>
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s, i) => (
@@ -503,29 +587,150 @@ function CustomerTab({ dateRange }) {
         ))}
       </div>
 
-      {/* Customer growth chart */}
-      <ChartCard title="Customer Growth" subtitle="New customers registered over the last 30 days">
-        {growthData.length === 0 ? <NoData /> : (
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={growthData} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
-              <defs>
-                <linearGradient id="custGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%"   stopColor="#4d7a62" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="#4d7a62" stopOpacity={0}    />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.5} vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#72675c" }} tickFormatter={d => d?.slice(5)} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip
-                contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }}
-                formatter={(v) => [v, "New Customers"]}
-              />
-              <Area type="monotone" dataKey="new_customers" stroke="#4d7a62" strokeWidth={2.5} fill="url(#custGrad)" dot={false} activeDot={{ r: 5, fill: "#4d7a62", stroke: "#fffdf9", strokeWidth: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </ChartCard>
+      {/* Loyalty stats + retention rate */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {/* Total Loyalty Points */}
+        <div className="rounded-card border border-warm-200 bg-surface p-4 card-shadow flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#fdf5e0" }}>
+            <span className="text-base">⭐</span>
+          </div>
+          <div>
+            <p className="text-[11px] text-text-secondary">Total Points</p>
+            <p className="text-lg font-bold text-text-primary tabular-nums">{formatNumber(totalLoyalty)}</p>
+          </div>
+        </div>
+        {/* Avg Points */}
+        <div className="rounded-card border border-warm-200 bg-surface p-4 card-shadow flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#f0f6f3" }}>
+            <span className="text-base">🏅</span>
+          </div>
+          <div>
+            <p className="text-[11px] text-text-secondary">Avg / Customer</p>
+            <p className="text-lg font-bold text-text-primary tabular-nums">{formatNumber(avgLoyalty)}</p>
+          </div>
+        </div>
+        {/* Active customers */}
+        <div className="rounded-card border border-warm-200 bg-surface p-4 card-shadow flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#f0f6f3" }}>
+            <Users className="h-4 w-4 text-primary-600" />
+          </div>
+          <div>
+            <p className="text-[11px] text-text-secondary">Active</p>
+            <p className="text-lg font-bold text-text-primary tabular-nums">{formatNumber(activeCustomers)}</p>
+          </div>
+        </div>
+        {/* Retention rate */}
+        <div className="rounded-card border border-warm-200 bg-surface p-4 card-shadow flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#fdf5e0" }}>
+            <TrendingUp className="h-4 w-4 text-accent-600" />
+          </div>
+          <div>
+            <p className="text-[11px] text-text-secondary">Retention Rate</p>
+            <p className="text-lg font-bold text-text-primary tabular-nums">{retentionRate}%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer growth + Segments side by side */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+        {/* Growth chart */}
+        <ChartCard title="Customer Growth" subtitle="New registrations over the last 30 days">
+          {growthData.length === 0 ? (
+            <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warm-100">
+                <Users className="h-5 w-5 text-warm-400" strokeWidth={1.5} />
+              </div>
+              <p className="text-sm font-medium text-text-secondary">No new registrations in last 30 days</p>
+              <p className="text-xs text-text-disabled">{totalCustomers > 0 ? `${totalCustomers} total customers registered earlier` : "Register customers in CRM to begin tracking"}</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={growthData} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="custGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#4d7a62" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#4d7a62" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.5} vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#72675c" }} tickFormatter={d => d?.slice(5)} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} width={32} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }} formatter={(v) => [v, "New Customers"]} />
+                <Area type="monotone" dataKey="new_customers" stroke="#4d7a62" strokeWidth={2.5} fill="url(#custGrad)" dot={false} activeDot={{ r: 5, fill: "#4d7a62", stroke: "#fffdf9", strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        {/* Gender & Loyalty Tier */}
+        <ChartCard title="Customer Segments" subtitle="Gender distribution & loyalty tier breakdown">
+          <div className="flex flex-col gap-5">
+            {/* Gender */}
+            {genderBreakdown.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wide">Gender</p>
+                <div className="flex items-center gap-4">
+                  <ResponsiveContainer width="45%" height={130}>
+                    <PieChart>
+                      <Pie data={genderBreakdown} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="count" paddingAngle={3} labelLine={false}>
+                        {genderBreakdown.map((_, i) => (
+                          <Cell key={i} fill={GENDER_COLORS[i % GENDER_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 12, background: "#fffdf9" }} formatter={(v, n) => [v, n]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-2">
+                    {genderBreakdown.map((g, i) => (
+                      <div key={g.gender} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ background: GENDER_COLORS[i % GENDER_COLORS.length] }} />
+                          <span className="text-xs text-text-secondary">{g.gender}</span>
+                        </div>
+                        <span className="text-xs font-bold text-text-primary tabular-nums">
+                          {g.count} ({totalCustomers > 0 ? Math.round((g.count / totalCustomers) * 100) : 0}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-text-disabled text-center py-2">No gender data available</div>
+            )}
+
+            {/* Loyalty Tiers */}
+            {loyaltyTiers.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wide">Loyalty Tiers</p>
+                <div className="space-y-2">
+                  {loyaltyTiers.map((tier) => {
+                    const color = TIER_COLORS[tier.tier] ?? "#a3bfa0";
+                    const pct   = activeCustomers > 0 ? (tier.count / activeCustomers) * 100 : 0;
+                    return (
+                      <div key={tier.tier}>
+                        <div className="mb-1 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                            <span className="text-xs font-medium text-text-primary">{tier.tier}</span>
+                          </div>
+                          <span className="text-xs text-text-secondary tabular-nums">{tier.count}</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-warm-200">
+                          <motion.div className="h-full rounded-full" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.65, ease: "easeOut" }} style={{ background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-text-disabled text-center py-2">All customers are in &ldquo;New&rdquo; tier (0 points)</div>
+            )}
+          </div>
+        </ChartCard>
+      </div>
 
       {/* Top Spenders table */}
       {topSpenders.length > 0 && (
@@ -564,6 +769,62 @@ function CustomerTab({ dateRange }) {
             </table>
           </div>
         </ChartCard>
+      )}
+
+      {/* Recently Joined Customers */}
+      {recentCustomers.length > 0 && (
+        <ChartCard title="Recently Joined" subtitle="Latest 10 registered customers">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-warm-200">
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">Customer</th>
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">Phone</th>
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">Gender</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Points</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Status</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentCustomers.map((c, i) => (
+                  <motion.tr key={c.id ?? i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                    className="border-b border-warm-100 last:border-0 hover:bg-warm-50 transition-colors">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                          style={{ background: "#355c4b" }}>
+                          {(c.name ?? "?")[0].toUpperCase()}
+                        </span>
+                        <span className="font-medium text-text-primary">{c.name ?? "—"}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-text-secondary">{c.phone}</td>
+                    <td className="py-3 text-text-secondary capitalize">{c.gender === "M" ? "Male" : c.gender === "F" ? "Female" : c.gender}</td>
+                    <td className="py-3 text-right tabular-nums text-text-secondary">{formatNumber(c.loyalty_points)}</td>
+                    <td className="py-3 text-right">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.is_active ? "bg-green-50 text-green-700" : "bg-warm-100 text-warm-500"}`}>
+                        {c.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right text-text-secondary tabular-nums">
+                      {c.joined ? new Date(c.joined).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
+      )}
+
+      {/* Empty state when NO customers exist at all in the DB */}
+      {totalCustomers === 0 && (
+        <EmptyState
+          icon={Users}
+          title="No customers yet"
+          description="Customer analytics will populate as customers are registered in CRM."
+        />
       )}
     </div>
   );

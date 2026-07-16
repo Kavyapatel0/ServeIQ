@@ -89,4 +89,12 @@ const KITCHEN_EVENTS = {
   ORDER_SERVED:          "order_served",
 };
 
-module.exports = { initSocket, getIO, KITCHEN_EVENTS };
+/**
+ * Customer events — fired whenever CRM data changes that should
+ * cause the Analytics → Customers tab to auto-refresh.
+ */
+const CUSTOMER_EVENTS = {
+  CUSTOMER_REGISTERED: "customer_registered",
+};
+
+module.exports = { initSocket, getIO, KITCHEN_EVENTS, CUSTOMER_EVENTS };

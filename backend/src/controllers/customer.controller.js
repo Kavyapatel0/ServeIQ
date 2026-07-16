@@ -1,5 +1,6 @@
 const CustomerModel = require("../models/customer.model");
 const AuditService = require("../services/audit.service");
+const { getIO, CUSTOMER_EVENTS } = require("../sockets/socket");
 
 const CustomerController = {
   // ─── Module 1: Customer Profiles ─────────────────────────────
@@ -54,6 +55,15 @@ const CustomerController = {
       const newCustomer = await CustomerModel.findById(newId);
 
       await AuditService.log(req.user.id, "CUSTOMER_CREATED", "Customer", newId, { name, phone });
+
+      // Notify all connected clients so Analytics → Customers tab refreshes live
+      try {
+        getIO().emit(CUSTOMER_EVENTS.CUSTOMER_REGISTERED, {
+          id:   newId,
+          name: newCustomer.name,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (_) { /* socket not yet initialised in test env */ }
 
       return res.status(201).json({
         success: true,
