@@ -45,6 +45,73 @@ catch (err) {
 },
 
   /**
+   * POST /api/auth/google
+   * Body: { credential }  — the ID token returned by Google Identity Services
+   */
+  async googleLogin(req, res) {
+    try {
+      const { credential } = req.body;
+      const result = await AuthService.googleLogin(credential);
+
+      await AuditService.log(
+        result.user.id,
+        "LOGIN",
+        "User",
+        result.user.id,
+        { email: result.user.email, method: "google" }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: result,
+      });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Internal server error",
+      });
+    }
+  },
+
+  /**
+   * POST /api/auth/google
+   * Body: { credential }  — the ID token returned by Google Identity Services
+   */
+  async googleLogin(req, res) {
+    try {
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing Google credential.",
+        });
+      }
+
+      const result = await AuthService.loginWithGoogle(credential);
+
+      await AuditService.log(
+        result.user.id,
+        "LOGIN_GOOGLE",
+        "User",
+        result.user.id,
+        { email: result.user.email }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: result,
+      });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Google sign-in failed.",
+      });
+    }
+  },
+
+  /**
    * GET /api/auth/me
    * Returns the currently authenticated user, including their
    * current permission_keys (useful for the frontend to show/hide UI).

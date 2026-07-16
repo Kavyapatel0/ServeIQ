@@ -15,6 +15,8 @@ import { Button }      from "@/components/ui/button";
 import { Badge }       from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 import { cn }          from "@/utils/cn";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS }   from "@/constants/permissions";
 import {
   getIngredients, createIngredient, updateIngredient, deleteIngredient, getLowStock,
   getSuppliers, createSupplier, updateSupplier,
@@ -45,11 +47,11 @@ const tabCls = (active) =>
   );
 
 const TABS = [
-  { id: "dashboard",       label: "Dashboard",       icon: BarChart2      },
-  { id: "ingredients",     label: "Ingredients",     icon: Package        },
-  { id: "suppliers",       label: "Suppliers",       icon: Truck          },
-  { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart   },
-  { id: "transactions",    label: "Transactions",    icon: ArrowDownCircle },
+  { id: "dashboard",       label: "Dashboard",       icon: BarChart2,      permission: PERMISSIONS.INVENTORY_VIEW    },
+  { id: "ingredients",     label: "Ingredients",     icon: Package,        permission: PERMISSIONS.INVENTORY_VIEW    },
+  { id: "suppliers",       label: "Suppliers",       icon: Truck,          permission: PERMISSIONS.SUPPLIER_VIEW     },
+  { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart,   permission: PERMISSIONS.PURCHASE_VIEW     },
+  { id: "transactions",    label: "Transactions",    icon: ArrowDownCircle,permission: PERMISSIONS.INVENTORY_VIEW    },
 ];
 
 function stockStatus(current, minimum) {
@@ -75,10 +77,20 @@ const PO_STATUS_BADGE = {
 
 /* ── Main Page ────────────────────────────────────────────────────────── */
 export function InventoryPage() {
-  const [activeTab,   setActiveTab]   = useState("dashboard");
+  const { can } = usePermission();
+  const visibleTabs = TABS.filter((tab) => can(tab.permission));
+
+  const [activeTab,   setActiveTab]   = useState(visibleTabs[0]?.id ?? "dashboard");
   const [dashboard,   setDashboard]   = useState(null);
   const [dashLoading, setDashLoading] = useState(true);
   const [lowStock,    setLowStock]    = useState([]);
+
+  // If the current tab becomes unavailable (e.g. permissions changed), fall back safely
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.id === activeTab) && visibleTabs.length > 0) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
 
   useEffect(() => {
     setDashLoading(true);
@@ -113,7 +125,7 @@ export function InventoryPage() {
       )}
 
       <div className={tabBarCls}>
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={tabCls(activeTab === tab.id)}>
             <tab.icon className="h-4 w-4" />{tab.label}
           </button>
@@ -122,11 +134,11 @@ export function InventoryPage() {
 
       <AnimatePresence mode="wait">
         <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-          {activeTab === "dashboard"       && <InventoryDashboardTab lowStock={lowStock} dashboard={dashboard} loading={dashLoading} />}
-          {activeTab === "ingredients"     && <IngredientsTab />}
-          {activeTab === "suppliers"       && <SuppliersTab />}
-          {activeTab === "purchase-orders" && <PurchaseOrdersTab />}
-          {activeTab === "transactions"    && <TransactionsTab />}
+          {activeTab === "dashboard"       && can(PERMISSIONS.INVENTORY_VIEW) && <InventoryDashboardTab lowStock={lowStock} dashboard={dashboard} loading={dashLoading} />}
+          {activeTab === "ingredients"     && can(PERMISSIONS.INVENTORY_VIEW) && <IngredientsTab />}
+          {activeTab === "suppliers"       && can(PERMISSIONS.SUPPLIER_VIEW)  && <SuppliersTab />}
+          {activeTab === "purchase-orders" && can(PERMISSIONS.PURCHASE_VIEW)  && <PurchaseOrdersTab />}
+          {activeTab === "transactions"    && can(PERMISSIONS.INVENTORY_VIEW) && <TransactionsTab />}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -333,11 +345,19 @@ function SuppliersTab() {
 }
 
 /* ── Purchase Orders Tab ─────────────────────────────────────────────── */
+const PO_FILTER_TABS = [
+  { id: "ALL",       label: "All"       },
+  { id: "PENDING",   label: "Pending"   },
+  { id: "RECEIVED",  label: "Received"  },
+  { id: "CANCELLED", label: "Cancelled" },
+];
+
 function PurchaseOrdersTab() {
   const [orders, setOrders] = useState([]); const [suppliers, setSuppliers] = useState([]); const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(true); const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ supplier_id: "", items: [{ ingredient_id: "", quantity: "", unit_price: "" }] });
   const [saving, setSaving] = useState(false);
+  const [poFilter, setPoFilter] = useState("ALL");
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([getPurchaseOrders().catch(() => ({ purchase_orders: [] })), getSuppliers().catch(() => ({ suppliers: [] })), getIngredients().catch(() => ({ ingredients: [] }))])
@@ -356,11 +376,45 @@ function PurchaseOrdersTab() {
     try { await createPurchaseOrder({ supplier_id: Number(form.supplier_id), items: form.items.map(it => ({ ingredient_id: Number(it.ingredient_id), quantity: Number(it.quantity), unit_price: Number(it.unit_price) })) }); toast.success("Purchase order created."); setShowModal(false); load(); }
     catch {} finally { setSaving(false); }
   };
+  const poCounts = PO_FILTER_TABS.reduce((acc, t) => {
+    acc[t.id] = t.id === "ALL" ? orders.length : orders.filter(o => o.status === t.id).length;
+    return acc;
+  }, {});
+  const filteredOrders = poFilter === "ALL" ? orders : orders.filter(o => o.status === poFilter);
   return (
     <div>
-      <div className="mb-4 flex justify-end"><Button onClick={() => { setForm({ supplier_id: "", items: [{ ingredient_id: "", quantity: "", unit_price: "" }] }); setShowModal(true); }}><Plus className="h-4 w-4" /> New PO</Button></div>
-      {loading ? <SectionSkeleton rows={4} /> : orders.length === 0 ? (
-        <EmptyState icon={ShoppingCart} title="No purchase orders" description="Create a purchase order to restock ingredients." actionLabel="New PO" onAction={() => setShowModal(true)} />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Status filter tabs */}
+        <div className="flex gap-1 overflow-x-auto rounded-xl border border-warm-200 bg-warm-100 p-1 scrollbar-thin">
+          {PO_FILTER_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setPoFilter(tab.id)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold whitespace-nowrap transition-all",
+                poFilter === tab.id
+                  ? "bg-surface text-primary-600 shadow-soft"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface/60"
+              )}
+            >
+              {tab.label}
+              {poCounts[tab.id] > 0 && (
+                <span className={cn(
+                  "flex h-4.5 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                  poFilter === tab.id ? "bg-primary-500 text-white" : "bg-warm-300 text-warm-700"
+                )}
+                  style={{ minWidth: "18px", height: "18px" }}
+                >
+                  {poCounts[tab.id]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <Button onClick={() => { setForm({ supplier_id: "", items: [{ ingredient_id: "", quantity: "", unit_price: "" }] }); setShowModal(true); }}><Plus className="h-4 w-4" /> New PO</Button>
+      </div>
+      {loading ? <SectionSkeleton rows={4} /> : filteredOrders.length === 0 ? (
+        <EmptyState icon={ShoppingCart} title={poFilter === "ALL" ? "No purchase orders" : `No ${poFilter.toLowerCase()} purchase orders`} description="Create a purchase order to restock ingredients." actionLabel="New PO" onAction={() => setShowModal(true)} />
       ) : (
         <div className="overflow-hidden rounded-card border border-warm-200 bg-surface card-shadow">
           <table className="w-full text-sm">
@@ -368,7 +422,7 @@ function PurchaseOrdersTab() {
               <tr>{["PO #","Supplier","Total","Status","Ordered","Actions"].map(h => <th key={h} className="px-5 py-3 text-left">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
-              {orders.map(po => {
+              {filteredOrders.map(po => {
                 const { variant, label } = PO_STATUS_BADGE[po.status] ?? { variant: "outline", label: po.status };
                 return (
                   <tr key={po.id} className="transition-colors hover:bg-warm-50">
@@ -419,13 +473,53 @@ function PurchaseOrdersTab() {
 }
 
 /* ── Transactions Tab ────────────────────────────────────────────────── */
+const TXN_FILTER_TABS = [
+  { id: "ALL",        label: "All"        },
+  { id: "PURCHASE",   label: "Purchase"   },
+  { id: "ADJUSTMENT", label: "Adjustment" },
+  { id: "USAGE",      label: "Usage"      },
+  { id: "WASTAGE",    label: "Wastage"    },
+];
+
 function TransactionsTab() {
   const [txns, setTxns] = useState([]); const [loading, setLoading] = useState(true);
+  const [txnFilter, setTxnFilter] = useState("ALL");
   useEffect(() => { setLoading(true); getInventoryTransactions().then(d => setTxns(d?.transactions ?? [])).catch(() => setTxns([])).finally(() => setLoading(false)); }, []);
   const TXN_STYLE = { PURCHASE: "success", ADJUSTMENT: "info", USAGE: "warning", WASTAGE: "danger" };
+  const txnCounts = TXN_FILTER_TABS.reduce((acc, t) => {
+    acc[t.id] = t.id === "ALL" ? txns.length : txns.filter(t2 => t2.transaction_type === t.id).length;
+    return acc;
+  }, {});
+  const filteredTxns = txnFilter === "ALL" ? txns : txns.filter(t => t.transaction_type === txnFilter);
   return (
     <div>
-      {loading ? <SectionSkeleton rows={6} /> : txns.length === 0 ? (
+      <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-warm-200 bg-warm-100 p-1 scrollbar-thin">
+        {TXN_FILTER_TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setTxnFilter(tab.id)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold whitespace-nowrap transition-all",
+              txnFilter === tab.id
+                ? "bg-surface text-primary-600 shadow-soft"
+                : "text-text-secondary hover:text-text-primary hover:bg-surface/60"
+            )}
+          >
+            {tab.label}
+            {txnCounts[tab.id] > 0 && (
+              <span className={cn(
+                "flex h-4.5 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                txnFilter === tab.id ? "bg-primary-500 text-white" : "bg-warm-300 text-warm-700"
+              )}
+                style={{ minWidth: "18px", height: "18px" }}
+              >
+                {txnCounts[tab.id]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      {loading ? <SectionSkeleton rows={6} /> : filteredTxns.length === 0 ? (
         <EmptyState icon={ArrowDownCircle} title="No transactions yet" description="Inventory movements will appear here." />
       ) : (
         <div className="overflow-hidden rounded-card border border-warm-200 bg-surface card-shadow">
@@ -434,7 +528,7 @@ function TransactionsTab() {
               <tr>{["Date","Ingredient","Type","Quantity","Reference","Notes"].map(h => <th key={h} className="px-5 py-3 text-left">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
-              {txns.map((t, i) => (
+              {filteredTxns.map((t, i) => (
                 <tr key={t.id ?? i} className="transition-colors hover:bg-warm-50">
                   <td className="px-5 py-3.5 whitespace-nowrap text-text-secondary">{formatDateTime(t.created_at)}</td>
                   <td className="px-5 py-3.5 font-medium text-text-primary">{t.ingredient?.name ?? t.ingredient_name ?? "—"}</td>

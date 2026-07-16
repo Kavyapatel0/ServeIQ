@@ -200,10 +200,20 @@ const POSService = {
         [orderId]
       );
 
-      // Create Kitchen_Order entry
-      await conn.execute(
-        `INSERT INTO Kitchen_Orders (order_id, status) VALUES (?, 'PENDING')`,
+      // Fetch branch_id from the order so we can satisfy the NOT NULL constraint
+      const [branchRows] = await conn.execute(
+        `SELECT branch_id FROM Orders WHERE id = ? LIMIT 1`,
         [orderId]
+      );
+      const kitchenBranchId = branchRows[0]?.branch_id ?? null;
+      if (!kitchenBranchId) {
+        throw { status: 400, message: "Order has no branch — cannot send to kitchen." };
+      }
+
+      // Create Kitchen_Order entry (branch_id is NOT NULL in schema)
+      await conn.execute(
+        `INSERT INTO Kitchen_Orders (order_id, branch_id, status) VALUES (?, ?, 'PENDING')`,
+        [orderId, kitchenBranchId]
       );
 
       await conn.commit();

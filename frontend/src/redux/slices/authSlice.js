@@ -21,6 +21,24 @@ export const loginUser = createAsyncThunk(
 );
 
 /**
+ * Logs in with a Google ID token obtained from Google Identity Services
+ * on the frontend. Only works for emails that already have a ServeIQ
+ * account — Google Sign-In does not auto-create accounts.
+ */
+export const loginWithGoogle = createAsyncThunk(
+  "auth/loginWithGoogle",
+  async (credential, { rejectWithValue }) => {
+    try {
+      const result = await authService.googleLogin(credential);
+      tokenStorage.set(result.token);
+      return result.user;
+    } catch (err) {
+      return rejectWithValue(err.message || "Google sign-in failed.");
+    }
+  }
+);
+
+/**
  * Called once on app load if a token already exists in storage, to
  * restore the session without forcing a re-login on every refresh.
  */
@@ -79,6 +97,19 @@ const authSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+      // Google login
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })

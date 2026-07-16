@@ -1,6 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import {
   loginUser,
+  loginWithGoogle,
   logoutUser,
   selectCurrentUser,
   selectIsAuthenticated,
@@ -27,6 +28,7 @@ export function useAuth() {
   const permissions = useSelector(selectPermissions);
 
   const login = (email, password) => dispatch(loginUser({ email, password }));
+  const googleLogin = (credential) => dispatch(loginWithGoogle(credential));
   const logout = () => dispatch(logoutUser());
 
   return {
@@ -37,6 +39,7 @@ export function useAuth() {
     bootstrapped,
     permissions,
     login,
+    googleLogin,
     logout,
   };
 }

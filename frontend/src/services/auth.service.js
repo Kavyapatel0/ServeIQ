@@ -12,6 +12,11 @@ export const authService = {
     return data.data; // { token, user }
   },
 
+  async googleLogin(credential) {
+    const { data } = await api.post("/auth/google", { credential });
+    return data.data; // { token, user }
+  },
+
   async getCurrentUser() {
     const { data } = await api.get("/auth/me");
     return data.data; // { id, name, email, role, branch_id, permissions }

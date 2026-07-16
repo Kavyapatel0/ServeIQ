@@ -30,6 +30,51 @@ router.post("/login", validators.login, AuthController.login);
 
 /**
  * @openapi
+ * /api/auth/google:
+ *   post:
+ *     summary: Log in using a Google Identity Services ID token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [credential]
+ *             properties:
+ *               credential: { type: string, description: "Google ID token (JWT) from GIS" }
+ *     responses:
+ *       200: { description: Login successful, returns token + user + permissions }
+ *       400: { description: Missing credential }
+ *       401: { description: Invalid/expired Google token }
+ *       403: { description: No matching ServeIQ account for this Google email }
+ */
+router.post("/google", AuthController.googleLogin);
+
+/**
+ * @openapi
+ * /api/auth/google:
+ *   post:
+ *     summary: Log in with a Google ID token (Google Identity Services)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [credential]
+ *             properties:
+ *               credential: { type: string, description: "Google ID token (JWT) from GSI" }
+ *     responses:
+ *       200: { description: Login successful, returns token + user + permissions }
+ *       401: { description: Invalid Google credential }
+ *       403: { description: No matching ServeIQ account for this Google email }
+ */
+router.post("/google", AuthController.googleLogin);
+
+/**
+ * @openapi
  * /api/auth/me:
  *   get:
  *     summary: Get the currently authenticated user

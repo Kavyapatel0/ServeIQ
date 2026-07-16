@@ -48,11 +48,11 @@ export function KitchenColumn({ status, orders, onStatusChange, onOpenDetails, u
         cfg.colBg,
         dimmed && "opacity-35 pointer-events-none"
       )}
-      style={{ minHeight: "480px" }}
+      style={{ height: "520px" }}
     >
-      {/* ── Sticky column header ─────────────────────────── */}
+      {/* Fixed header — sits inside overflow-hidden container so it never scrolls */}
       <div className={cn(
-        "sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 shrink-0",
+        "flex shrink-0 items-center gap-2 border-b px-4 py-3",
         cfg.headerBg
       )}>
         <span className="text-base leading-none">{cfg.emoji}</span>
@@ -65,7 +65,7 @@ export function KitchenColumn({ status, orders, onStatusChange, onOpenDetails, u
         </span>
       </div>
 
-      {/* ── Scrollable cards area ─────────────────────────── */}
+      {/* Scrollable cards area — takes remaining height */}
       <div className="scrollbar-thin flex-1 space-y-2.5 overflow-y-auto p-2.5">
         <AnimatePresence mode="popLayout">
           {orders.length === 0 ? (
