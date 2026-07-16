@@ -307,13 +307,33 @@ const AnalyticsModel = {
       branchParam
     );
 
+    // Daily new-customer growth for the last 30 days
+    const [growthRows] = await pool.execute(
+      `SELECT
+         DATE(created_at)    AS date,
+         COUNT(*)            AS new_customers
+       FROM Customers
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`
+    );
+
+    const totalCustomers     = Number(totals[0].total);
+    const returningCustomers = Number(returning[0].cnt);
+
     return {
-      total_customers:     Number(totals[0].total),
+      total_customers:     totalCustomers,
       active_customers:    Number(totals[0].active),
+      new_customers:       Number(newThisMonth[0].cnt),
       new_this_month:      Number(newThisMonth[0].cnt),
-      returning_customers: Number(returning[0].cnt),
+      returning_customers: returningCustomers,
+      avg_visit_frequency: Number(avgVisits[0].avg_visits) || 0,
       average_visits:      Number(avgVisits[0].avg_visits) || 0,
       top_spenders:        topSpenders,
+      growth_data:         growthRows.map(r => ({
+        date:          r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10),
+        new_customers: Number(r.new_customers),
+      })),
     };
   },
 

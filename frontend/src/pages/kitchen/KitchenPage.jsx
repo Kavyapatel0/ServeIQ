@@ -9,7 +9,7 @@ import { useKitchenSocket } from "@/hooks/useKitchenSocket";
 import { PERMISSIONS }      from "@/constants/permissions";
 
 import {
-  fetchKitchenOrders, fetchKitchenDashboard, advanceOrderStatus,
+  fetchKitchenOrders, fetchKitchenDashboard, advanceOrderStatus, dismissServedOrder,
   selectKitchenOrders, selectKitchenStatus, selectKitchenError,
   selectSocketConnected, selectUpdatingId, selectKitchenDashboard,
 } from "@/redux/slices/kitchenSlice";
@@ -77,6 +77,16 @@ export function KitchenPage() {
         dispatch(fetchKitchenDashboard());
       })
       .catch(err => toast.error(err?.message || "Couldn't update order status."));
+  };
+
+  const handleDismissServed = (order) => {
+    dispatch(dismissServedOrder(order.id))
+      .unwrap()
+      .then(() => {
+        toast.success(`Order ${order.order_number} cleared from board.`);
+        dispatch(fetchKitchenDashboard());
+      })
+      .catch(err => toast.error(err?.message || "Couldn't clear order."));
   };
 
   const handleOpenDetails = (order) => { setSelectedOrder(order); setDetailOpen(true); };
@@ -161,6 +171,7 @@ export function KitchenPage() {
         <KitchenBoard
           orders={orders}
           onStatusChange={handleStatusChange}
+          onDismissServed={handleDismissServed}
           onOpenDetails={handleOpenDetails}
           updatingId={updatingId}
           canAdvance={canAdvance}

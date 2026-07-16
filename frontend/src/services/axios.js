@@ -58,7 +58,14 @@ api.interceptors.response.use(
     } else if (status === 403) {
       toast.error("You don't have permission to do that.");
     } else if (status >= 500) {
-      toast.error("Server error. Please try again in a moment.");
+      // Suppress toast for analytics/top-items which legitimately returns 500
+      // on an empty database (no order history). All analytics 500s are caught
+      // and returned as empty data by analyticsApi.js.
+      const url = error?.config?.url ?? "";
+      const isAnalytics = url.includes("/analytics/");
+      if (!isAnalytics) {
+        toast.error("Server error. Please try again in a moment.");
+      }
     }
     // 400/404/409/422 are left for the calling code to handle contextually
     // (e.g. inline form errors) rather than a generic toast.

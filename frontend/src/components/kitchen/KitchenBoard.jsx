@@ -8,7 +8,7 @@ import { cn } from "@/utils/cn";
 // Active board only shows in-progress statuses — SERVED goes to history section
 const ACTIVE_COLUMNS = ["PENDING", "PREPARING", "READY"];
 
-export function KitchenBoard({ orders, onStatusChange, onOpenDetails, updatingId, canAdvance, filterStatus = "ALL" }) {
+export function KitchenBoard({ orders, onStatusChange, onDismissServed, onOpenDetails, updatingId, canAdvance, filterStatus = "ALL" }) {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const servedOrders = orders.filter(o => o.status === "SERVED");
@@ -84,6 +84,7 @@ export function KitchenBoard({ orders, onStatusChange, onOpenDetails, updatingId
                         key={order.id}
                         order={order}
                         onStatusChange={onStatusChange}
+                        onDismiss={onDismissServed}
                         onOpenDetails={onOpenDetails}
                         loading={updatingId === order.id}
                         canAdvance={canAdvance("SERVED")}

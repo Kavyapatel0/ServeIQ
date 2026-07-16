@@ -129,6 +129,49 @@ const CouponController = {
     }
   },
 
+  // ─── Module 5: Coupon Validation (POS — no order needed yet) ──
+  /**
+   * POST /api/coupons/validate
+   * Body: { code, order_total }
+   * Validates coupon eligibility and returns the discount amount.
+   * No redemption recorded — just a preview/check for the POS cart.
+   */
+  async validate(req, res) {
+    try {
+      const { code, order_total } = req.body;
+      if (!code) {
+        return res.status(422).json({ success: false, message: "code is required" });
+      }
+
+      const orderTotal = parseFloat(order_total ?? 0);
+
+      // Use the model's existing validation logic (handles expiry + usage limits)
+      const { coupon, discount_applied } = await CouponModel.validateAndCalculate(
+        code.toUpperCase(),
+        orderTotal,
+        null // no customer_id at this point (pre-order)
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Coupon is valid",
+        data: {
+          code: coupon.code,
+          discount_type: coupon.discount_type,
+          discount_value: coupon.discount,
+          discount_amount: discount_applied,
+          minimum_order_amount: coupon.minimum_order_amount,
+        },
+      });
+    } catch (err) {
+      console.error("CouponController.validate:", err);
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Internal server error",
+      });
+    }
+  },
+
   // ─── Module 5: Coupon Redemption ─────────────────────────────
 
   /**

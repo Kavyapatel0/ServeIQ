@@ -1,13 +1,14 @@
 import { api } from "./axios";
 
-// Real backend endpoints confirmed:
+// Real backend endpoints:
 // GET  /api/auth/me                → { data: {...} }
 // GET  /api/users                  → { data: [...] }
 // GET  /api/users/:id              → { data: {...} }
 // POST /api/users                  → { data: {...} }
 // PUT  /api/users/:id              → { data: {...} }
 // DELETE /api/users/:id            → { data: {...} }
-// NOTE: /branches does NOT exist — branch info comes from user.branch on /auth/me
+// GET  /api/users/roles            → { data: [...] }   ← real roles list
+// GET  /api/users/branches         → { data: [...] }   ← real branches list
 
 export const getUserProfile = () =>
   api.get("/auth/me").then((r) => r.data?.data ?? null);
@@ -17,9 +18,6 @@ export const updateUserProfile = (data) =>
 
 export const changePassword = (data) =>
   api.put("/users/change-password", data).then((r) => r.data);
-
-export const getBranchDetails = (id) =>
-  api.get(`/users/${id}`).then((r) => r.data?.data?.branch ?? null).catch(() => null);
 
 export const getUsers = (params = {}) =>
   api.get("/users", { params }).then((r) => ({
@@ -35,24 +33,20 @@ export const updateUser = (id, data) =>
 export const deleteUser = (id) =>
   api.delete(`/users/${id}`).then((r) => r.data);
 
-// No /branches endpoint — return branch data from users list
+// GET /api/users/roles — returns [{ id, name }]
+export const getRoles = () =>
+  api.get("/users/roles").then((r) => ({
+    roles: r.data?.data ?? [],
+  }));
+
+// GET /api/users/branches — returns [{ id, name, address, phone, is_active }]
 export const getBranches = () =>
-  api.get("/users", { params: { limit: 200 } }).then((r) => {
-    const users = r.data?.data ?? [];
-    // Collect unique branches from users
-    const branchMap = new Map();
-    users.forEach((u) => {
-      if (u.branch_id && u.branch_name) {
-        if (!branchMap.has(u.branch_id)) {
-          branchMap.set(u.branch_id, {
-            id: u.branch_id,
-            name: u.branch_name,
-            is_active: true,
-          });
-        }
-      }
-    });
-    return {
-      branches: Array.from(branchMap.values()),
-    };
-  }).catch(() => ({ branches: [] }));
+  api.get("/users/branches").then((r) => ({
+    branches: (r.data?.data ?? []).map((b) => ({
+      id: b.id,
+      name: b.name,
+      address: b.address ?? null,
+      phone: b.phone ?? null,
+      is_active: b.is_active !== 0,
+    })),
+  }));

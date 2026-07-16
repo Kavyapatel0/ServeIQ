@@ -11,26 +11,27 @@ const validators = require("../middlewares/validators");
 router.use(authenticate);
 
 /**
- * @openapi
- * /api/users:
- *   get:
- *     summary: List users
- *     description: Users with `users.manage` see every branch. Everyone else is locked to their own branch_id.
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: branch_id
- *         schema: { type: integer }
- *         description: Only honored for callers with users.manage
- *       - in: query
- *         name: role_id
- *         schema: { type: integer }
- *     responses:
- *       200: { description: List of users }
- *       401: { description: Unauthorized }
- *       403: { description: Forbidden }
+ * GET /api/users/roles
+ * Returns all available roles (id + name) so the frontend can populate selects.
+ */
+router.get(
+  "/roles",
+  authorize(PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_MANAGE),
+  UserController.getRoles
+);
+
+/**
+ * GET /api/users/branches
+ * Returns all branches (id + name + is_active).
+ */
+router.get(
+  "/branches",
+  authorize(PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_MANAGE),
+  UserController.getBranches
+);
+
+/**
+ * GET /api/users
  */
 router.get(
   "/",
@@ -40,45 +41,7 @@ router.get(
 );
 
 /**
- * @openapi
-/**
- * @openapi
- * /api/users/{id}:
- *   put:
- *     summary: Update an existing user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               role_id:
- *                 type: integer
- *               branch_id:
- *                 type: integer
- *     responses:
- *       200:
- *         description: User updated
- *       404:
- *         description: User not found
- *       409:
- *         description: Email already in use
+ * GET /api/users/:id
  */
 router.get(
   "/:id",
@@ -88,30 +51,7 @@ router.get(
 );
 
 /**
- * @openapi
- * /api/users:
- *   post:
- *     summary: Create a new user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, email, password, role_id]
- *             properties:
- *               name: { type: string }
- *               email: { type: string }
- *               password: { type: string }
- *               role_id: { type: integer }
- *               branch_id: { type: integer, nullable: true }
- *     responses:
- *       201: { description: User created }
- *       409: { description: Email already in use }
- *       422: { description: Validation failed }
+ * POST /api/users
  */
 router.post(
   "/",
@@ -121,22 +61,7 @@ router.post(
 );
 
 /**
- * @openapi
- * /api/users/{id}:
- *   put:
- *     summary: Update an existing user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200: { description: User updated }
- *       404: { description: User not found }
- *       409: { description: Email already in use }
+ * PUT /api/users/:id
  */
 router.put(
   "/:id",
@@ -146,23 +71,9 @@ router.put(
 );
 
 /**
- * @openapi
- * /api/users/{id}:
- *   delete:
- *     summary: Soft-delete a user
- *     description: Sets deleted_at + is_active=false. The row is preserved for audit history.
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200: { description: User soft-deleted }
- *       400: { description: Cannot delete your own account }
- *       404: { description: User not found }
+ * DELETE /api/users/:id
+ * Soft delete — see UserModel.delete(). The row is preserved for
+ * audit history and any FK references elsewhere in the schema.
  */
 router.delete(
   "/:id",

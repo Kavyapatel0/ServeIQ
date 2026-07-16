@@ -7,7 +7,8 @@
  * POST   /api/purchase-orders/:id/items             — purchase.manage
  * PATCH  /api/purchase-orders/:id/items/:itemId     — purchase.manage
  * DELETE /api/purchase-orders/:id/items/:itemId     — purchase.manage
- * POST   /api/purchase-orders/:id/receive           — purchase.manage
+ * PATCH  /api/purchase-orders/:id/receive           — purchase.manage
+ * PATCH  /api/purchase-orders/:id/cancel            — purchase.manage
  */
 
 const express = require("express");
@@ -82,12 +83,22 @@ router.delete(
   PurchaseController.removeItem
 );
 
-router.post(
+// PATCH instead of POST to match frontend inventoryApi.js
+router.patch(
   "/:id/receive",
   authenticate,
   authorize(PERMISSIONS.PURCHASE_MANAGE),
   enforceBranchScope(PERMISSIONS.BRANCHES_MANAGE),
   PurchaseController.receive
+);
+
+// Cancel a PENDING purchase order
+router.patch(
+  "/:id/cancel",
+  authenticate,
+  authorize(PERMISSIONS.PURCHASE_MANAGE),
+  enforceBranchScope(PERMISSIONS.BRANCHES_MANAGE),
+  PurchaseController.cancel
 );
 
 module.exports = router;

@@ -33,3 +33,7 @@ export const advanceKitchenOrderStatus = (id, targetStatus) => {
   }
   return api.patch(`/kitchen/orders/${id}/${segment}`).then((r) => r.data.data);
 };
+
+/** Dismiss / clear a SERVED order from the kitchen board by marking it COMPLETED */
+export const dismissServedOrder = (id) =>
+  api.patch(`/orders/${id}/status`, { status: "COMPLETED" }).then((r) => r.data?.data ?? r.data);

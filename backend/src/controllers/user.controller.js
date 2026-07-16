@@ -2,8 +2,61 @@ const { validationResult } = require("express-validator");
 const UserModel = require("../models/user.model");
 const AuthService = require("../services/auth.service");
 const AuditService = require("../services/audit.service");
+const { pool } = require("../config/db");
+
+// Role name → ID mapping (must match seed data)
+const ROLE_NAME_TO_ID = {
+  "Super Admin":       1,
+  "Branch Manager":    2,
+  "Cashier":           3,
+  "Chef":              4,
+  "Waiter":            5,
+  "Inventory Manager": 6,
+};
+
+/**
+ * Resolve role_id from request body.
+ * Accepts either role_id (number) or role (role name string).
+ */
+function resolveRoleId(body) {
+  if (body.role_id) return parseInt(body.role_id);
+  if (body.role && ROLE_NAME_TO_ID[body.role]) return ROLE_NAME_TO_ID[body.role];
+  return null;
+}
 
 const UserController = {
+  /**
+   * GET /api/users/roles
+   * Returns all available roles for UI selects.
+   */
+  async getRoles(req, res) {
+    try {
+      const [rows] = await pool.execute("SELECT id, name FROM Roles ORDER BY id");
+      return res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+      console.error("UserController.getRoles:", err);
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  },
+
+  /**
+   * GET /api/users/branches
+   * Returns all branches for UI selects.
+   */
+  async getBranches(req, res) {
+    try {
+      const [rows] = await pool.execute(
+        "SELECT id, name, location AS address FROM Branches ORDER BY name"
+      );
+      // Add is_active: true as a default since the Branches table doesn't have this column
+      const branches = rows.map(b => ({ ...b, phone: null, is_active: true }));
+      return res.status(200).json({ success: true, data: branches });
+    } catch (err) {
+      console.error("UserController.getBranches:", err);
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  },
+
   /**
    * GET /api/users
    * req.branchScope is set by enforceBranchScope middleware:
@@ -23,7 +76,9 @@ const UserController = {
       }
 
       const users = await UserModel.findAll(filters);
-      return res.status(200).json({ success: true, data: users });
+      // Normalize: add role and branch as objects for frontend compatibility
+      const normalized = users.map(normalizeUser);
+      return res.status(200).json({ success: true, data: normalized });
     } catch (err) {
       return res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -43,7 +98,7 @@ const UserController = {
         return res.status(403).json({ success: false, message: "Access denied" });
       }
 
-      return res.status(200).json({ success: true, data: user });
+      return res.status(200).json({ success: true, data: normalizeUser(user) });
     } catch (err) {
       return res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -51,6 +106,7 @@ const UserController = {
 
   /**
    * POST /api/users
+   * Accepts either role_id (integer) or role (role name string).
    */
   async create(req, res) {
     const errors = validationResult(req);
@@ -63,7 +119,12 @@ const UserController = {
     }
 
     try {
-      const { name, email, password, role_id, branch_id } = req.body;
+      const { name, email, password, branch_id } = req.body;
+      const role_id = resolveRoleId(req.body);
+
+      if (!role_id) {
+        return res.status(422).json({ success: false, message: "A valid role or role_id is required" });
+      }
 
       const exists = await UserModel.emailExists(email);
       if (exists) {
@@ -90,15 +151,17 @@ const UserController = {
       return res.status(201).json({
         success: true,
         message: "User created successfully",
-        data: newUser,
+        data: normalizeUser(newUser),
       });
     } catch (err) {
+      console.error("UserController.create:", err);
       return res.status(500).json({ success: false, message: "Internal server error" });
     }
   },
 
   /**
    * PUT /api/users/:id
+   * Accepts either role_id (integer) or role (role name string).
    */
   async update(req, res) {
     const errors = validationResult(req);
@@ -117,7 +180,8 @@ const UserController = {
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      const { name, email, password, role_id, branch_id } = req.body;
+      const { name, email, password, branch_id } = req.body;
+      const role_id = resolveRoleId(req.body) || undefined;
 
       if (email && email !== existing.email) {
         const taken = await UserModel.emailExists(email, userId);
@@ -135,7 +199,7 @@ const UserController = {
       const updated = await UserModel.findById(userId);
 
       const changedFields = Object.keys(req.body).filter((k) =>
-        ["name", "email", "password", "role_id", "branch_id"].includes(k)
+        ["name", "email", "password", "role_id", "role", "branch_id"].includes(k)
       );
       await AuditService.log(req.user.id, "UPDATE", "User", userId, {
         changed_fields: changedFields,
@@ -144,9 +208,10 @@ const UserController = {
       return res.status(200).json({
         success: true,
         message: "User updated successfully",
-        data: updated,
+        data: normalizeUser(updated),
       });
     } catch (err) {
+      console.error("UserController.update:", err);
       return res.status(500).json({ success: false, message: "Internal server error" });
     }
   },
@@ -184,5 +249,19 @@ const UserController = {
     }
   },
 };
+
+/**
+ * Normalize a DB user row to the shape the frontend expects.
+ * Frontend reads: u.role (string), u.branch_name, u.branch?.name
+ */
+function normalizeUser(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    // role_name comes from the JOIN with Roles
+    role: user.role_name ?? user.role,
+    branch_name: user.branch_name ?? null,
+  };
+}
 
 module.exports = UserController;

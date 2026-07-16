@@ -15,9 +15,8 @@ import { Badge }       from "@/components/ui/badge";
 import { formatDate }  from "@/utils/format";
 import { cn }          from "@/utils/cn";
 import { useAuth }     from "@/hooks/useAuth";
-import { ROLES }       from "@/constants/permissions";
 import {
-  getUsers, createUser, updateUser, deleteUser, getBranches,
+  getUsers, createUser, updateUser, deleteUser, getBranches, getRoles,
 } from "@/services/settingsApi";
 
 /* ── Design constants ────────────────────────────────────────────────── */
@@ -93,12 +92,20 @@ export function AdminPage() {
 
 /* ── Users Tab ───────────────────────────────────────────────────────── */
 function UsersTab({ currentUserId }) {
-  const [users,     setUsers]     = useState([]); const [branches, setBranches] = useState([]);
-  const [loading,   setLoading]   = useState(true); const [search,  setSearch]   = useState("");
-  const [showModal, setShowModal] = useState(false); const [editing, setEditing]  = useState(null);
-  const [showPw,    setShowPw]    = useState(false); const [saving,  setSaving]   = useState(false);
-  const [form,      setForm]      = useState({ name: "", email: "", phone: "", role: "Cashier", branch_id: "", password: "" });
-  const [page,      setPage]      = useState(1);
+  const [users,     setUsers]     = useState([]);
+  const [branches,  setBranches]  = useState([]);
+  const [roles,     setRoles]     = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [search,    setSearch]    = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editing,   setEditing]   = useState(null);
+  const [showPw,    setShowPw]    = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  // form uses role_id (number) internally
+  const [form, setForm] = useState({
+    name: "", email: "", phone: "", role_id: "", branch_id: "", password: "",
+  });
+  const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
   const load = useCallback(() => {
@@ -106,25 +113,71 @@ function UsersTab({ currentUserId }) {
     Promise.all([
       getUsers({ search: search || undefined }).catch(() => ({ users: [] })),
       getBranches().catch(() => ({ branches: [] })),
-    ]).then(([u, b]) => {
-      setUsers(u?.users ?? []); setBranches(b?.branches ?? []);
+      getRoles().catch(() => ({ roles: [] })),
+    ]).then(([u, b, r]) => {
+      setUsers(u?.users ?? []);
+      setBranches(b?.branches ?? []);
+      setRoles(r?.roles ?? []);
     }).finally(() => setLoading(false));
   }, [search]);
   useEffect(() => { load(); setPage(1); }, [load]);
 
-  const openCreate = () => { setEditing(null); setForm({ name: "", email: "", phone: "", role: "Cashier", branch_id: branches[0]?.id ?? "", password: "" }); setShowModal(true); };
-  const openEdit   = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, phone: u.phone ?? "", role: u.role, branch_id: u.branch_id ?? "", password: "" }); setShowModal(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm({
+      name: "", email: "", phone: "",
+      role_id: roles[0]?.id ?? "",
+      branch_id: "",
+      password: "",
+    });
+    setShowModal(true);
+  };
+  const openEdit = (u) => {
+    setEditing(u);
+    setForm({
+      name: u.name,
+      email: u.email,
+      phone: u.phone ?? "",
+      role_id: u.role_id ?? "",
+      branch_id: u.branch_id ?? "",
+      password: "",
+    });
+    setShowModal(true);
+  };
+
   const handleSave = async () => {
-    if (!form.name || !form.email || !form.role) { toast.error("Name, email and role are required."); return; }
-    if (!editing && !form.password) { toast.error("Password required for new users."); return; }
+    if (!form.name || !form.email || !form.role_id) {
+      toast.error("Name, email and role are required.");
+      return;
+    }
+    if (!editing && !form.password) {
+      toast.error("Password required for new users.");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { ...form, branch_id: form.branch_id ? Number(form.branch_id) : undefined };
-      if (!payload.password) delete payload.password;
-      editing ? await updateUser(editing.id, payload) : await createUser(payload);
-      toast.success(editing ? "User updated." : "User created."); setShowModal(false); load();
-    } catch {} finally { setSaving(false); }
+      const payload = {
+        name: form.name,
+        email: form.email,
+        role_id: form.role_id ? Number(form.role_id) : undefined,
+        branch_id: form.branch_id ? Number(form.branch_id) : null,
+      };
+      if (form.phone) payload.phone = form.phone;
+      if (form.password) payload.password = form.password;
+
+      editing
+        ? await updateUser(editing.id, payload)
+        : await createUser(payload);
+      toast.success(editing ? "User updated." : "User created.");
+      setShowModal(false);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? "Failed to save user.");
+    } finally {
+      setSaving(false);
+    }
   };
+
   const handleDelete = async (id) => {
     if (id === currentUserId) { toast.error("You cannot delete yourself."); return; }
     if (!confirm("Delete this user? This cannot be undone.")) return;
@@ -166,8 +219,8 @@ function UsersTab({ currentUserId }) {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-text-secondary">{u.email}</td>
-                  <td className="px-5 py-3.5"><Badge variant={ROLE_BADGE[u.role] ?? "outline"}>{u.role}</Badge></td>
-                  <td className="px-5 py-3.5 text-text-secondary">{u.branch?.name ?? u.branch_name ?? "—"}</td>
+                  <td className="px-5 py-3.5"><Badge variant={ROLE_BADGE[u.role ?? u.role_name] ?? "outline"}>{u.role ?? u.role_name}</Badge></td>
+                  <td className="px-5 py-3.5 text-text-secondary">{u.branch_name ?? "—"}</td>
                   <td className="px-5 py-3.5 text-text-secondary">{formatDate(u.created_at)}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1.5">
@@ -196,8 +249,9 @@ function UsersTab({ currentUserId }) {
           <FormField label="Email" required><input className={inputCls} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="user@restaurant.com" /></FormField>
           <FormField label="Phone"><input className={inputCls} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+91 98765 43210" /></FormField>
           <FormField label="Role" required>
-            <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              {Object.values(ROLES).map(r => <option key={r}>{r}</option>)}
+            <select className={inputCls} value={form.role_id} onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}>
+              <option value="">Select role…</option>
+              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </FormField>
           <FormField label="Branch">
@@ -208,7 +262,7 @@ function UsersTab({ currentUserId }) {
           </FormField>
           <FormField label={editing ? "New Password (leave blank to keep)" : "Password"} required={!editing}>
             <div className="relative">
-              <input className={cn(inputCls, "pr-10")} type={showPw ? "text" : "password"} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={editing ? "Leave blank to keep current" : "Min 8 characters"} />
+              <input className={cn(inputCls, "pr-10")} type={showPw ? "text" : "password"} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={editing ? "Leave blank to keep current" : "Min 6 characters"} />
               <button type="button" onClick={() => setShowPw(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-text-disabled transition-colors hover:text-text-secondary">
                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -238,12 +292,6 @@ function BranchesTab() {
               <h3 className="truncate font-semibold text-text-primary">{b.name}</h3>
               {b.address    && <p className="mt-1 flex items-center gap-1 text-xs text-text-secondary"><MapPin className="h-3 w-3 shrink-0" />{b.address}</p>}
               {b.phone      && <p className="mt-0.5 text-xs text-text-secondary">{b.phone}</p>}
-              {b.manager_name && (
-                <p className="mt-2 flex items-center gap-1 text-xs">
-                  <User className="h-3 w-3 text-primary-500" />
-                  <span className="font-semibold text-primary-700">{b.manager_name}</span>
-                </p>
-              )}
             </div>
           </div>
           {b.is_active !== undefined && (

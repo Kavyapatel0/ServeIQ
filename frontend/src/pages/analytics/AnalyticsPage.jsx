@@ -455,25 +455,46 @@ function BusinessTab({ dateRange }) {
 
 /* ── Customer Analytics Tab ──────────────────────────────────────────── */
 function CustomerTab({ dateRange }) {
-  const [data, setData] = useState(null); const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const params = getDateParams(dateRange);
+
   useEffect(() => {
     setLoading(true);
-    getCustomerAnalytics(params).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    getCustomerAnalytics(params)
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
+
   if (loading) return <AnalyticsSkeleton />;
-  if (!data) return <EmptyState icon={Users} title="No customer data" description="Customer analytics will appear once orders are placed." />;
+  if (!data) return (
+    <EmptyState
+      icon={Users}
+      title="No customer data"
+      description="Customer analytics will appear once orders are placed."
+    />
+  );
+
+  // Normalise field names — backend may return either naming convention
+  const totalCustomers     = data.total_customers     ?? 0;
+  const newCustomers       = data.new_customers       ?? data.new_this_month      ?? 0;
+  const returningCustomers = data.returning_customers ?? 0;
+  const avgFrequency       = data.avg_visit_frequency ?? data.average_visits      ?? 0;
+  const growthData         = data.growth_data         ?? [];
+  const topSpenders        = data.top_spenders        ?? [];
 
   const stats = [
-    { label: "Total Customers",     value: formatNumber(data.total_customers ?? 0),    icon: Users,      accent: "brand"   },
-    { label: "New Customers",       value: formatNumber(data.new_customers ?? 0),       icon: TrendingUp, accent: "success" },
-    { label: "Returning Customers", value: formatNumber(data.returning_customers ?? 0), icon: Users,      accent: "info"    },
-    { label: "Avg Visit Frequency", value: `${data.avg_visit_frequency ?? 0}×`,         icon: Clock,      accent: "accent"  },
+    { label: "Total Customers",     value: formatNumber(totalCustomers),     icon: Users,      accent: "brand"   },
+    { label: "New This Month",      value: formatNumber(newCustomers),       icon: TrendingUp, accent: "success" },
+    { label: "Returning Customers", value: formatNumber(returningCustomers), icon: Users,      accent: "info"    },
+    { label: "Avg Visit Frequency", value: `${avgFrequency}×`,              icon: Clock,      accent: "accent"  },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
@@ -481,23 +502,67 @@ function CustomerTab({ dateRange }) {
           </motion.div>
         ))}
       </div>
-      {data.growth_data?.length > 0 && (
-        <ChartCard title="Customer Growth" subtitle="New customers over time">
+
+      {/* Customer growth chart */}
+      <ChartCard title="Customer Growth" subtitle="New customers registered over the last 30 days">
+        {growthData.length === 0 ? <NoData /> : (
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={data.growth_data} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
+            <AreaChart data={growthData} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
               <defs>
                 <linearGradient id="custGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%"   stopColor="#4d7a62" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="#4d7a62" stopOpacity={0} />
+                  <stop offset="100%" stopColor="#4d7a62" stopOpacity={0}    />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#d8ccbe" strokeOpacity={0.5} vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#72675c" }} tickFormatter={d => d?.slice(5)} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#72675c" }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }} formatter={(v) => [v, "New Customers"]} />
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid #d8ccbe", fontSize: 13, background: "#fffdf9" }}
+                formatter={(v) => [v, "New Customers"]}
+              />
               <Area type="monotone" dataKey="new_customers" stroke="#4d7a62" strokeWidth={2.5} fill="url(#custGrad)" dot={false} activeDot={{ r: 5, fill: "#4d7a62", stroke: "#fffdf9", strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      {/* Top Spenders table */}
+      {topSpenders.length > 0 && (
+        <ChartCard title="Top Spenders" subtitle="Customers ranked by lifetime spend">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-warm-200">
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">#</th>
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">Customer</th>
+                  <th className="pb-3 text-left text-xs font-semibold text-text-secondary">Phone</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Visits</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Total Spent</th>
+                  <th className="pb-3 text-right text-xs font-semibold text-text-secondary">Last Visit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topSpenders.map((customer, i) => (
+                  <tr key={customer.id ?? i} className="border-b border-warm-100 last:border-0 hover:bg-warm-50 transition-colors">
+                    <td className="py-3 pr-3">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold"
+                        style={{ background: i === 0 ? "#fdf5e0" : i === 1 ? "#f0f6f3" : "#f6f1e8", color: i === 0 ? "#8a640f" : i === 1 ? "#2d5c2c" : "#72675c" }}>
+                        {i + 1}
+                      </span>
+                    </td>
+                    <td className="py-3 font-medium text-text-primary">{customer.name ?? "—"}</td>
+                    <td className="py-3 text-text-secondary">{customer.phone ?? "—"}</td>
+                    <td className="py-3 text-right tabular-nums text-text-secondary">{customer.total_visits ?? 0}</td>
+                    <td className="py-3 text-right tabular-nums font-semibold text-primary-600">{formatCurrency(customer.total_spent ?? 0)}</td>
+                    <td className="py-3 text-right text-text-secondary">
+                      {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </ChartCard>
       )}
     </div>

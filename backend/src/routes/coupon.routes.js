@@ -104,6 +104,34 @@ router.delete(
 
 /**
  * @openapi
+ * /api/coupons/validate:
+ *   post:
+ *     summary: Validate a coupon code (POS preview — no order required)
+ *     tags: [CRM - Coupons]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code]
+ *             properties:
+ *               code: { type: string }
+ *               order_total: { type: number }
+ *     responses:
+ *       200: { description: Coupon valid, discount_amount returned }
+ *       400: { description: Coupon invalid/expired/not met minimum }
+ *       404: { description: Coupon not found }
+ */
+router.post(
+  "/validate",
+  authorize(PERMISSIONS.COUPONS_MANAGE, PERMISSIONS.PAYMENTS_PROCESS, PERMISSIONS.ORDERS_CREATE),
+  CouponController.validate
+);
+
+/**
+ * @openapi
  * /api/coupons/redeem:
  *   post:
  *     summary: Apply a coupon to an order at checkout

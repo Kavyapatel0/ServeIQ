@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Clock, User, ChefHat } from "lucide-react";
+import { Clock, User, ChefHat, Trash2 } from "lucide-react";
 
 import { KitchenTimer } from "./KitchenTimer";
 import { StatusButton } from "./StatusButton";
@@ -13,8 +13,9 @@ const STATUS_CONFIG = {
   SERVED:    { leftBar: "border-l-primary-400",  bg: "bg-primary-50/40" },
 };
 
-export function KitchenCard({ order, onStatusChange, onOpenDetails, loading, canAdvance }) {
+export function KitchenCard({ order, onStatusChange, onDismiss, onOpenDetails, loading, canAdvance }) {
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
+  const isServed = order.status === "SERVED";
 
   return (
     <motion.div
@@ -30,7 +31,7 @@ export function KitchenCard({ order, onStatusChange, onOpenDetails, loading, can
         cfg.leftBar, cfg.bg
       )}
     >
-      {/* Header row: order # + table badge + timer */}
+      {/* Header row: order # + table badge + timer + dismiss button (served only) */}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-text-primary">
@@ -42,7 +43,24 @@ export function KitchenCard({ order, onStatusChange, onOpenDetails, loading, can
             </span>
           )}
         </div>
-        <KitchenTimer createdAt={order.created_at} status={order.status} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <KitchenTimer createdAt={order.created_at} status={order.status} />
+          {/* Delete/dismiss button — only shown for SERVED orders */}
+          {isServed && onDismiss && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismiss(order); }}
+              disabled={loading}
+              title="Clear from board"
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+                "border border-danger/30 bg-danger-bg text-danger hover:bg-red-100 hover:border-danger/60",
+                loading && "pointer-events-none opacity-50"
+              )}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* People info */}

@@ -39,6 +39,21 @@ export const advanceOrderStatus = createAsyncThunk(
   }
 );
 
+/**
+ * Dismiss a SERVED order from the kitchen board (marks it COMPLETED).
+ */
+export const dismissServedOrder = createAsyncThunk(
+  "kitchen/dismissServed",
+  async (id, { rejectWithValue }) => {
+    try {
+      await kitchenApi.dismissServedOrder(id);
+      return { id };
+    } catch (err) {
+      return rejectWithValue({ id, message: err.message || "Failed to dismiss order." });
+    }
+  }
+);
+
 const kitchenSlice = createSlice({
   name: "kitchen",
   initialState: {
@@ -112,6 +127,18 @@ const kitchenSlice = createSlice({
         // dashboard counts are refreshed by the caller.
       })
       .addCase(advanceOrderStatus.rejected, (state) => {
+        state.updatingId = null;
+      })
+
+      .addCase(dismissServedOrder.pending, (state, action) => {
+        state.updatingId = action.meta.arg;
+      })
+      .addCase(dismissServedOrder.fulfilled, (state, action) => {
+        state.updatingId = null;
+        // Remove the dismissed order from local state immediately
+        state.orders = state.orders.filter((o) => o.id !== action.payload.id);
+      })
+      .addCase(dismissServedOrder.rejected, (state) => {
         state.updatingId = null;
       });
   },

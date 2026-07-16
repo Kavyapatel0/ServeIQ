@@ -6,17 +6,20 @@ const AuditService = require("../services/audit.service");
 const PurchaseController = {
   /**
    * POST /api/purchase-orders
-   * Creates an empty PENDING purchase order. Items are added separately.
-   * Body: { supplier_id }
+   * Creates a PENDING purchase order with optional line items in a single call.
+   * Body: { supplier_id, items?: [{ ingredient_id, quantity, unit_price }] }
    */
   async create(req, res) {
     try {
-      const { supplier_id } = req.body;
+      const { supplier_id, items } = req.body;
       if (!supplier_id) {
         return res.status(400).json({ success: false, message: "supplier_id is required." });
       }
 
-      const branch_id = req.branchScope ?? req.user.branch_id;
+      const branch_id =
+        (req.branchScope !== null ? req.branchScope : null) ??
+        req.user.branch_id ??
+        1; // Default to branch 1 for Super Admin without assigned branch
       if (!branch_id) {
         return res.status(400).json({
           success: false,
@@ -30,15 +33,32 @@ const PurchaseController = {
         created_by: req.user.id,
       });
 
+      // If items were provided in the same request, add them now
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          const { ingredient_id, quantity, unit_price } = item;
+          if (!ingredient_id || !quantity) continue;
+          await PurchaseOrderModel.addItem({
+            purchase_order_id: insertId,
+            ingredient_id: Number(ingredient_id),
+            quantity: Number(quantity),
+            unit_price: Number(unit_price ?? 0),
+          });
+        }
+        await PurchaseOrderModel.recalculateTotal(insertId);
+      }
+
       await AuditService.log(req.user.id, "PURCHASE_CREATED", "Purchase_Order", insertId, {
         po_number, supplier_id, branch_id,
       });
 
       const po = await PurchaseOrderModel.findById(insertId);
+      // Normalize supplier field to object for frontend compatibility
+      const normalized = normalizePO(po);
       return res.status(201).json({
         success: true,
         message: `Purchase order ${po_number} created.`,
-        data: po,
+        data: normalized,
       });
     } catch (err) {
       console.error("PurchaseController.create:", err);
@@ -61,7 +81,9 @@ const PurchaseController = {
         status,
       });
 
-      return res.status(200).json({ success: true, count: orders.length, data: orders });
+      // Normalize so frontend gets po.supplier.name instead of po.supplier_name
+      const normalized = orders.map(normalizePO);
+      return res.status(200).json({ success: true, count: normalized.length, data: normalized });
     } catch (err) {
       console.error("PurchaseController.getAll:", err);
       return res.status(500).json({ success: false, message: "Failed to fetch purchase orders." });
@@ -81,7 +103,7 @@ const PurchaseController = {
       }
 
       const items = await PurchaseOrderModel.findItemsByPoId(id);
-      return res.status(200).json({ success: true, data: { ...po, items } });
+      return res.status(200).json({ success: true, data: { ...normalizePO(po), items } });
     } catch (err) {
       console.error("PurchaseController.getById:", err);
       return res.status(500).json({ success: false, message: "Failed to fetch purchase order." });
@@ -231,7 +253,7 @@ const PurchaseController = {
   },
 
   /**
-   * POST /api/purchase-orders/:id/receive
+   * PATCH /api/purchase-orders/:id/receive
    * Validates PO, increases ingredient stock, writes Inventory_Transactions,
    * updates PO status to RECEIVED, writes audit log — all atomically.
    */
@@ -251,7 +273,7 @@ const PurchaseController = {
       return res.status(200).json({
         success: true,
         message: `Purchase order received. Stock updated for ${result.items_received} ingredient(s).`,
-        data: updated,
+        data: normalizePO(updated),
       });
     } catch (err) {
       console.error("PurchaseController.receive:", err);
@@ -260,6 +282,60 @@ const PurchaseController = {
         .json({ success: false, message: err.message || "Failed to receive purchase order." });
     }
   },
+
+  /**
+   * PATCH /api/purchase-orders/:id/cancel
+   * Cancels a PENDING purchase order — no stock changes occur.
+   */
+  async cancel(req, res) {
+    try {
+      const poId = parseInt(req.params.id);
+
+      const po = await PurchaseOrderModel.findById(poId);
+      if (!po) return res.status(404).json({ success: false, message: "Purchase order not found." });
+      if (req.branchScope && po.branch_id !== req.branchScope) {
+        return res.status(403).json({ success: false, message: "Access denied." });
+      }
+      if (po.status !== PO_STATUS.PENDING) {
+        return res.status(409).json({
+          success: false,
+          message: `Cannot cancel a purchase order with status: ${po.status}.`,
+        });
+      }
+
+      await PurchaseOrderModel.updateStatus(poId, PO_STATUS.CANCELLED);
+
+      await AuditService.log(req.user.id, "PURCHASE_CANCELLED", "Purchase_Order", poId, {
+        po_number: po.po_number,
+      });
+
+      const updated = await PurchaseOrderModel.findById(poId);
+      return res.status(200).json({
+        success: true,
+        message: "Purchase order cancelled.",
+        data: normalizePO(updated),
+      });
+    } catch (err) {
+      console.error("PurchaseController.cancel:", err);
+      return res.status(500).json({ success: false, message: "Failed to cancel purchase order." });
+    }
+  },
 };
+
+/**
+ * Normalize a raw DB row into the shape the frontend expects:
+ *   po.supplier.name  (instead of po.supplier_name)
+ *   po.created_at     (always present)
+ */
+function normalizePO(po) {
+  if (!po) return po;
+  return {
+    ...po,
+    supplier: {
+      id: po.supplier_id,
+      name: po.supplier_name ?? po.supplier?.name ?? null,
+    },
+  };
+}
 
 module.exports = PurchaseController;

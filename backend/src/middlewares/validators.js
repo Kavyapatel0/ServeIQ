@@ -28,9 +28,13 @@ const validators = {
     body("password")
       .notEmpty().withMessage("Password is required")
       .isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    // Accept either role_id (integer) or role (name string) — controller resolves the ID
     body("role_id")
-      .notEmpty().withMessage("Role is required")
-      .isInt({ min: 1 }).withMessage("Role must be a valid integer"),
+      .optional({ nullable: true })
+      .isInt({ min: 1 }).withMessage("role_id must be a valid integer"),
+    body("role")
+      .optional()
+      .isString().withMessage("role must be a string"),
     body("branch_id")
       .optional({ nullable: true })
       .isInt({ min: 1 }).withMessage("Branch must be a valid integer"),
@@ -53,9 +57,13 @@ const validators = {
     body("password")
       .optional()
       .isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    // Accept either role_id (integer) or role (name string)
     body("role_id")
+      .optional({ nullable: true })
+      .isInt({ min: 1 }).withMessage("role_id must be a valid integer"),
+    body("role")
       .optional()
-      .isInt({ min: 1 }).withMessage("Role must be a valid integer"),
+      .isString().withMessage("role must be a string"),
     body("branch_id")
       .optional({ nullable: true })
       .isInt({ min: 1 }).withMessage("Branch must be a valid integer"),
