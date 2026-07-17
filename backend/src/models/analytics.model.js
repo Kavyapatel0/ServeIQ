@@ -188,6 +188,9 @@ const AnalyticsModel = {
   async getTopItems({ branch_id, limit = 10 } = {}) {
     const safeLimit = parseInt(limit, 10) || 10;
     const branchFilter = branch_id ? "AND o.branch_id = ?" : "";
+    const params = branch_id
+      ? [branch_id, safeLimit]
+      : [safeLimit];
 
     const [rows] = await pool.execute(
       `SELECT
@@ -249,33 +252,31 @@ const AnalyticsModel = {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Customer analytics — pulls ALL registered customers (not just those
-   * with orders) so the dashboard populates from CRM data immediately.
-   * Includes: totals, gender breakdown, loyalty tiers, growth chart,
-   * top spenders, and recently joined customers.
+   * Customer analytics — total, active, returning, average visits.
    */
   async getCustomerAnalytics({ branch_id } = {}) {
     const branchFilter = branch_id ? "AND o.branch_id = ?" : "";
     const branchParam  = branch_id ? [branch_id] : [];
 
-    // All registered customers — counts total, active, and gender split
-    const [totals] = await pool.execute(
-      `SELECT
-         COUNT(*) AS total,
-         SUM(is_active = TRUE) AS active,
-         SUM(gender = 'M') AS male,
-         SUM(gender = 'F') AS female
-       FROM Customers`
+    const safeQuery = async (sql, params = []) => {
+      try {
+        const [rows] = await pool.execute(sql, params);
+        return rows;
+      } catch (_) {
+        return [];
+      }
+    };
+
+    const totals = await safeQuery(
+      "SELECT COUNT(*) AS total, SUM(is_active = TRUE) AS active FROM Customers"
     );
 
-    // New customers registered this calendar month
-    const [newThisMonth] = await pool.execute(
+    const newThisMonth = await safeQuery(
       `SELECT COUNT(*) AS cnt FROM Customers
        WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())`
     );
 
-    // Returning customers — placed more than 1 paid order
-    const [returning] = await pool.execute(
+    const returning = await safeQuery(
       `SELECT COUNT(*) AS cnt FROM (
          SELECT customer_id FROM Orders
          WHERE customer_id IS NOT NULL
@@ -287,8 +288,7 @@ const AnalyticsModel = {
       branchParam
     );
 
-    // Average visit frequency across all customers with orders
-    const [avgVisits] = await pool.execute(
+    const avgVisits = await safeQuery(
       `SELECT ROUND(AVG(visit_count), 2) AS avg_visits FROM (
          SELECT customer_id, COUNT(*) AS visit_count
          FROM Orders
@@ -300,8 +300,7 @@ const AnalyticsModel = {
       branchParam
     );
 
-    // Top 10 spenders (customers with orders)
-    const [topSpenders] = await pool.execute(
+    const topSpenders = await safeQuery(
       `SELECT
          c.id, c.name, c.phone,
          COUNT(o.id)                  AS total_visits,
@@ -317,8 +316,7 @@ const AnalyticsModel = {
       branchParam
     );
 
-    // Daily new-customer registrations for the last 30 days
-    const [growthRows] = await pool.execute(
+    const growthRows = await safeQuery(
       `SELECT
          DATE(created_at)    AS date,
          COUNT(*)            AS new_customers
@@ -328,82 +326,25 @@ const AnalyticsModel = {
        ORDER BY date ASC`
     );
 
-    // Loyalty points tier breakdown from all active customers
-    const [loyaltyTierRows] = await pool.execute(
-      `SELECT
-         CASE
-           WHEN loyalty_points >= 1000 THEN 'Gold'
-           WHEN loyalty_points >= 500  THEN 'Silver'
-           WHEN loyalty_points >= 100  THEN 'Bronze'
-           ELSE 'New'
-         END AS tier,
-         COUNT(*) AS count
-       FROM Customers
-       WHERE is_active = TRUE
-       GROUP BY tier
-       ORDER BY FIELD(tier, 'Gold', 'Silver', 'Bronze', 'New')`
-    );
-
-    // Total and average loyalty points across active customers
-    const [loyaltyTotals] = await pool.execute(
-      `SELECT
-         COALESCE(SUM(loyalty_points), 0) AS total_points,
-         COALESCE(AVG(loyalty_points), 0) AS avg_points
-       FROM Customers WHERE is_active = TRUE`
-    );
-
-    // Most recently registered customers (last 10)
-    const [recentCustomers] = await pool.execute(
-      `SELECT id, name, phone, email, gender, loyalty_points, is_active, created_at
-       FROM Customers
-       ORDER BY created_at DESC
-       LIMIT 10`
-    );
-
-    const totalCustomers     = Number(totals[0].total);
-    const maleCount          = Number(totals[0].male)   || 0;
-    const femaleCount        = Number(totals[0].female) || 0;
-    const otherCount         = Math.max(0, totalCustomers - maleCount - femaleCount);
-    const returningCustomers = Number(returning[0].cnt);
+    const totalCustomers     = Number(totals[0]?.total ?? 0);
+    const returningCustomers = Number(returning[0]?.cnt ?? 0);
 
     return {
-      total_customers:      totalCustomers,
-      active_customers:     Number(totals[0].active),
-      new_customers:        Number(newThisMonth[0].cnt),
-      new_this_month:       Number(newThisMonth[0].cnt),
-      returning_customers:  returningCustomers,
-      avg_visit_frequency:  Number(avgVisits[0].avg_visits) || 0,
-      average_visits:       Number(avgVisits[0].avg_visits) || 0,
-      total_loyalty_points: Number(loyaltyTotals[0].total_points) || 0,
-      avg_loyalty_points:   Math.round(Number(loyaltyTotals[0].avg_points)) || 0,
-      top_spenders:         topSpenders,
-      growth_data:          growthRows.map(r => ({
+      total_customers:     totalCustomers,
+      active_customers:    Number(totals[0]?.active ?? 0),
+      new_customers:       Number(newThisMonth[0]?.cnt ?? 0),
+      new_this_month:      Number(newThisMonth[0]?.cnt ?? 0),
+      returning_customers: returningCustomers,
+      avg_visit_frequency: Number(avgVisits[0]?.avg_visits ?? 0) || 0,
+      average_visits:      Number(avgVisits[0]?.avg_visits ?? 0) || 0,
+      top_spenders:        topSpenders,
+      growth_data:         growthRows.map(r => ({
         date:          r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10),
         new_customers: Number(r.new_customers),
       })),
-      gender_breakdown: [
-        { gender: "Male",   count: maleCount   },
-        { gender: "Female", count: femaleCount  },
-        { gender: "Other",  count: otherCount   },
-      ].filter(g => g.count > 0),
-      loyalty_tiers: loyaltyTierRows.map(r => ({
-        tier:  r.tier,
-        count: Number(r.count),
-      })),
-      recent_customers: recentCustomers.map(r => ({
-        id:             r.id,
-        name:           r.name,
-        phone:          r.phone  || "—",
-        email:          r.email  || "—",
-        gender:         r.gender || "Unknown",
-        loyalty_points: Number(r.loyalty_points) || 0,
-        is_active:      Boolean(r.is_active),
-        joined:         r.created_at instanceof Date
-          ? r.created_at.toISOString().slice(0, 10)
-          : String(r.created_at).slice(0, 10),
-      })),
     };
   },
+
 
   /**
    * Loyalty program analytics — earned, redeemed, outstanding.

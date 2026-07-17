@@ -176,4 +176,24 @@ router.post(
   CustomerController.redeemPoints
 );
 
+router.post(
+  "/:id/loyalty/adjust",
+  authorize(PERMISSIONS.LOYALTY_MANAGE, PERMISSIONS.CRM_MANAGE),
+  CustomerController.adjustPoints
+);
+
+// ─── Global Loyalty endpoints ─────────────────────────────────
+
+router.get(
+  "/loyalty/transactions",
+  authorize(PERMISSIONS.LOYALTY_MANAGE, PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE),
+  CustomerController.getAllLoyaltyTransactions
+);
+
+router.get(
+  "/loyalty/stats",
+  authorize(PERMISSIONS.LOYALTY_MANAGE, PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE),
+  CustomerController.getLoyaltyStats
+);
+
 module.exports = router;

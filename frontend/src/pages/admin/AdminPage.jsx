@@ -92,7 +92,7 @@ export function AdminPage() {
 
 /* ── Users Tab ───────────────────────────────────────────────────────── */
 function UsersTab({ currentUserId }) {
-  const [users,     setUsers]     = useState([]);
+  const [allUsers,  setAllUsers]  = useState([]);
   const [branches,  setBranches]  = useState([]);
   const [roles,     setRoles]     = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -111,16 +111,30 @@ function UsersTab({ currentUserId }) {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
-      getUsers({ search: search || undefined }).catch(() => ({ users: [] })),
+      getUsers().catch(() => ({ users: [] })),
       getBranches().catch(() => ({ branches: [] })),
       getRoles().catch(() => ({ roles: [] })),
     ]).then(([u, b, r]) => {
-      setUsers(u?.users ?? []);
+      setAllUsers(u?.users ?? []);
       setBranches(b?.branches ?? []);
       setRoles(r?.roles ?? []);
     }).finally(() => setLoading(false));
-  }, [search]);
-  useEffect(() => { load(); setPage(1); }, [load]);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  // Client-side search filter
+  const q = search.trim().toLowerCase();
+  const users = q
+    ? allUsers.filter(u =>
+        (u.name       ?? "").toLowerCase().includes(q) ||
+        (u.email      ?? "").toLowerCase().includes(q) ||
+        (u.role       ?? u.role_name ?? "").toLowerCase().includes(q) ||
+        (u.branch_name ?? "").toLowerCase().includes(q)
+      )
+    : allUsers;
+
+  // Reset to page 1 whenever search changes
+  useEffect(() => { setPage(1); }, [search]);
 
   const openCreate = () => {
     setEditing(null);

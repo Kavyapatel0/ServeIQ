@@ -35,25 +35,30 @@ export const getCustomerOrders = (id, params = {}) =>
     orders: r.data?.data ?? [],
   }));
 
-// ─── Loyalty (no dedicated endpoints — derive from customers list) ─────────
+// ─── Loyalty ──────────────────────────────────────────────────────────────
 export const getLoyaltyTransactions = (params = {}) =>
-  // No /loyalty/transactions endpoint; return empty gracefully
-  Promise.resolve({ transactions: [] });
+  api.get("/customers/loyalty/transactions", { params })
+    .then((r) => ({ transactions: r.data?.data ?? [] }))
+    .catch(() => ({ transactions: [] }));
 
 export const getLoyaltyDashboard = () =>
-  // Derive basic stats from customers endpoint
-  api.get("/customers", { params: { limit: 1000 } }).then((r) => {
-    const customers = r.data?.data ?? [];
-    const total = customers.length;
-    const withPoints = customers.filter((c) => (c.loyalty_points ?? 0) > 0).length;
-    const totalPoints = customers.reduce((s, c) => s + (Number(c.loyalty_points) || 0), 0);
-    return {
-      total_customers: total,
-      active_members: withPoints,
-      total_points_issued: totalPoints,
-      total_points_redeemed: 0,
-    };
-  }).catch(() => null);
+  api.get("/customers/loyalty/stats")
+    .then((r) => r.data?.data ?? null)
+    .catch(() =>
+      // Fallback: derive from customers list if stats endpoint fails
+      api.get("/customers", { params: { limit: 1000 } }).then((r) => {
+        const customers = r.data?.data ?? [];
+        const total = customers.length;
+        const withPoints = customers.filter((c) => (c.loyalty_points ?? 0) > 0).length;
+        const totalPoints = customers.reduce((s, c) => s + (Number(c.loyalty_points) || 0), 0);
+        return {
+          total_customers: total,
+          active_members: withPoints,
+          total_points_issued: totalPoints,
+          total_points_redeemed: 0,
+        };
+      }).catch(() => null)
+    );
 
 // ─── Coupons ──────────────────────────────────────────────────────────────
 export const getCoupons = (params = {}) =>

@@ -1,6 +1,5 @@
 const CustomerModel = require("../models/customer.model");
 const AuditService = require("../services/audit.service");
-const { getIO, CUSTOMER_EVENTS } = require("../sockets/socket");
 
 const CustomerController = {
   // ─── Module 1: Customer Profiles ─────────────────────────────
@@ -55,15 +54,6 @@ const CustomerController = {
       const newCustomer = await CustomerModel.findById(newId);
 
       await AuditService.log(req.user.id, "CUSTOMER_CREATED", "Customer", newId, { name, phone });
-
-      // Notify all connected clients so Analytics → Customers tab refreshes live
-      try {
-        getIO().emit(CUSTOMER_EVENTS.CUSTOMER_REGISTERED, {
-          id:   newId,
-          name: newCustomer.name,
-          timestamp: new Date().toISOString(),
-        });
-      } catch (_) { /* socket not yet initialised in test env */ }
 
       return res.status(201).json({
         success: true,
@@ -209,6 +199,65 @@ const CustomerController = {
         success: false,
         message: err.message || "Internal server error",
       });
+    }
+  },
+
+  // ─── Adjust Points (award/deduct manually) ───────────────────
+  async adjustPoints(req, res) {
+    try {
+      const { points, type = "EARNED" } = req.body;
+      const pts = Number(points);
+      if (!pts || pts < 1) {
+        return res.status(422).json({ success: false, message: "points must be a positive integer" });
+      }
+
+      const customer = await CustomerModel.findById(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ success: false, message: "Customer not found" });
+      }
+
+      if (type === "REDEEMED") {
+        await CustomerModel.redeemPoints(req.params.id, pts);
+      } else {
+        await CustomerModel.awardPoints(req.params.id, pts);
+      }
+
+      await AuditService.log(req.user.id, "LOYALTY_POINTS_ADJUSTED", "Customer", req.params.id, {
+        points, type,
+      });
+
+      const updated = await CustomerModel.findById(req.params.id);
+      return res.status(200).json({
+        success: true,
+        message: `${pts} points ${type === "REDEEMED" ? "deducted" : "awarded"} successfully`,
+        data: { remaining_points: updated.loyalty_points },
+      });
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Internal server error",
+      });
+    }
+  },
+
+  // ─── Global Loyalty Transactions ─────────────────────────────
+  async getAllLoyaltyTransactions(req, res) {
+    try {
+      const limit  = Math.min(Number(req.query.limit)  || 100, 500);
+      const offset = Math.max(Number(req.query.offset) || 0,   0);
+      const transactions = await CustomerModel.getAllLoyaltyTransactions({ limit, offset });
+      return res.status(200).json({ success: true, data: transactions });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  },
+
+  async getLoyaltyStats(req, res) {
+    try {
+      const stats = await CustomerModel.getLoyaltyStats();
+      return res.status(200).json({ success: true, data: stats });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Internal server error" });
     }
   },
 };

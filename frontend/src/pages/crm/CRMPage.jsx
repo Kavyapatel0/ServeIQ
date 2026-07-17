@@ -230,34 +230,187 @@ function CustomerProfileDrawer({ customer, onClose }) {
 
 /* ── Loyalty Tab ──────────────────────────────────────────────────────── */
 function LoyaltyTab() {
-  const [txns, setTxns] = useState([]); const [loading, setLoading] = useState(true);
-  useEffect(() => { getLoyaltyTransactions({ limit: 50 }).then(d => setTxns(d?.transactions ?? [])).catch(() => setTxns([])).finally(() => setLoading(false)); }, []);
-  const TYPE_STYLE = { EARN: "success", REDEEM: "warning", EXPIRE: "danger", ADJUST: "info" };
+  const [txns,       setTxns]       = useState([]);
+  const [customers,  setCustomers]  = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({ customer_id: "", points: "", type: "EARNED", note: "" });
+  const [saving,     setSaving]     = useState(false);
+  const [search,     setSearch]     = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      getLoyaltyTransactions({ limit: 100 }).catch(() => ({ transactions: [] })),
+      getCustomers({ limit: 500 }).catch(() => ({ customers: [] })),
+    ]).then(([t, c]) => {
+      setTxns(t?.transactions ?? []);
+      setCustomers(c?.customers ?? []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAdjust = async () => {
+    if (!adjustForm.customer_id || !adjustForm.points) {
+      toast.error("Customer and points are required."); return;
+    }
+    const pts = Number(adjustForm.points);
+    if (!pts || pts < 1) { toast.error("Points must be a positive number."); return; }
+    setSaving(true);
+    try {
+      const { api } = await import("@/services/axios");
+      await api.post(`/customers/${adjustForm.customer_id}/loyalty/adjust`, {
+        points: pts,
+        type: adjustForm.type,
+      });
+      toast.success("Points adjusted successfully.");
+      setShowAdjust(false);
+      setAdjustForm({ customer_id: "", points: "", type: "EARNED", note: "" });
+      load();
+    } catch (err) {
+      toast.error(err?.message ?? "Failed to adjust points.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const TYPE_STYLE  = { EARNED: "success", REDEEMED: "warning", EXPIRED: "danger" };
+  const TYPE_SIGN   = { EARNED: "+", REDEEMED: "−", EXPIRED: "−" };
+  const TYPE_COLOR  = { EARNED: "text-success-text", REDEEMED: "text-danger-text", EXPIRED: "text-danger-text" };
+
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? txns.filter(t =>
+        (t.customer?.name ?? "").toLowerCase().includes(q) ||
+        (t.transaction_type ?? "").toLowerCase().includes(q)
+      )
+    : txns;
+
   return (
-    <div>
-      <h2 className="mb-4 text-base font-semibold text-text-primary">Loyalty Transactions</h2>
-      {loading ? <SectionSkeleton rows={5} /> : txns.length === 0 ? (
-        <EmptyState icon={Star} title="No loyalty transactions" description="Points are awarded automatically when customers place orders." />
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">Loyalty Transactions</h2>
+          <p className="text-xs text-text-secondary mt-0.5">Points earned and redeemed across all orders</p>
+        </div>
+        <div className="flex gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-disabled" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search customer…"
+              className="h-9 rounded-input border border-warm-200 bg-warm-50 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-disabled outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 focus:bg-surface"
+            />
+          </div>
+          <Button onClick={() => setShowAdjust(true)}>
+            <Plus className="h-4 w-4" /> Adjust Points
+          </Button>
+        </div>
+      </div>
+
+      {loading ? <SectionSkeleton rows={6} /> : filtered.length === 0 ? (
+        <EmptyState
+          icon={Star}
+          title={txns.length === 0 ? "No loyalty transactions yet" : "No results found"}
+          description={txns.length === 0
+            ? "Points are awarded automatically when a linked customer places an order via POS."
+            : "Try a different search term."}
+        />
       ) : (
         <div className="overflow-hidden rounded-card border border-warm-200 bg-surface card-shadow">
           <table className="w-full text-sm">
             <thead className="border-b border-warm-200 bg-warm-100 text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              <tr>{["Date","Customer","Type","Points","Balance","Reference"].map(h => <th key={h} className="px-5 py-3 text-left">{h}</th>)}</tr>
+              <tr>
+                {["Date & Time", "Customer", "Type", "Points", "Current Balance", ""].map(h => (
+                  <th key={h} className="px-5 py-3 text-left">{h}</th>
+                ))}
+              </tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
-              {txns.map((t, i) => (
+              {filtered.map((t, i) => (
                 <tr key={t.id ?? i} className="transition-colors hover:bg-warm-50">
-                  <td className="whitespace-nowrap px-5 py-3.5 text-text-secondary">{formatDateTime(t.created_at)}</td>
-                  <td className="px-5 py-3.5 font-medium text-text-primary">{t.customer?.name ?? "—"}</td>
-                  <td className="px-5 py-3.5"><Badge variant={TYPE_STYLE[t.transaction_type] ?? "outline"}>{t.transaction_type}</Badge></td>
-                  <td className={cn("px-5 py-3.5 font-semibold tabular-nums", t.points > 0 ? "text-success-text" : "text-danger-text")}>{t.points > 0 ? "+" : ""}{t.points}</td>
-                  <td className="px-5 py-3.5 font-semibold tabular-nums">{t.balance_after ?? "—"}</td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-text-secondary">{t.reference ?? "—"}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-text-secondary text-xs">
+                    {t.created_at ? formatDateTime(t.created_at) : "—"}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">
+                        {t.customer?.name?.[0]?.toUpperCase() ?? "?"}
+                      </div>
+                      <span className="font-medium text-text-primary">{t.customer?.name ?? "—"}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <Badge variant={TYPE_STYLE[t.transaction_type] ?? "outline"}>
+                      {t.transaction_type}
+                    </Badge>
+                  </td>
+                  <td className={cn("px-5 py-3.5 font-bold tabular-nums text-base", TYPE_COLOR[t.transaction_type] ?? "text-text-primary")}>
+                    {TYPE_SIGN[t.transaction_type] ?? ""}{Math.abs(t.points)}
+                  </td>
+                  <td className="px-5 py-3.5 tabular-nums font-semibold text-text-secondary">
+                    <div className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5">
+                      <Star className="h-3 w-3 text-accent-500" strokeWidth={2} />
+                      <span className="text-xs font-bold text-accent-700">{t.balance_after ?? "—"}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-text-disabled">
+                    {t.reference ?? "via order"}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="border-t border-warm-100 px-5 py-2.5">
+            <p className="text-xs text-text-secondary">{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}</p>
+          </div>
         </div>
+      )}
+
+      {/* Adjust Points Modal */}
+      {showAdjust && (
+        <FormModal title="Adjust Loyalty Points" onClose={() => setShowAdjust(false)} onSave={handleAdjust} saving={saving}>
+          <FormField label="Customer" required>
+            <select
+              className={inputCls}
+              value={adjustForm.customer_id}
+              onChange={e => setAdjustForm(f => ({ ...f, customer_id: e.target.value }))}
+            >
+              <option value="">Select customer…</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}{c.phone ? ` (${c.phone})` : ""} — {c.loyalty_points ?? 0} pts
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Transaction Type" required>
+            <select
+              className={inputCls}
+              value={adjustForm.type}
+              onChange={e => setAdjustForm(f => ({ ...f, type: e.target.value }))}
+            >
+              <option value="EARNED">Award Points (add)</option>
+              <option value="REDEEMED">Redeem Points (deduct)</option>
+            </select>
+          </FormField>
+          <FormField label="Points" required>
+            <input
+              className={inputCls}
+              type="number"
+              min="1"
+              value={adjustForm.points}
+              onChange={e => setAdjustForm(f => ({ ...f, points: e.target.value }))}
+              placeholder="e.g. 50"
+            />
+          </FormField>
+          <p className="text-xs text-text-secondary rounded-xl bg-warm-100 px-3 py-2">
+            {adjustForm.type === "EARNED"
+              ? "Points will be added to the customer's balance and a new EARNED transaction will be logged."
+              : "Points will be deducted from the customer's balance. Customer must have sufficient points."}
+          </p>
+        </FormModal>
       )}
     </div>
   );

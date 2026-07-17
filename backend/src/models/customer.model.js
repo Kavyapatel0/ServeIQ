@@ -125,13 +125,13 @@ const CustomerModel = {
     const currentPoints = pointsRow[0]?.loyalty_points || 0;
 
     const [earned] = await pool.execute(
-      `SELECT COALESCE(SUM(points), 0) AS total
+      `SELECT COALESCE(SUM(ABS(points)), 0) AS total
        FROM Loyalty_Transactions
        WHERE customer_id = ? AND transaction_type = 'EARNED'`,
       [customerId]
     );
     const [redeemed] = await pool.execute(
-      `SELECT COALESCE(SUM(points), 0) AS total
+      `SELECT COALESCE(SUM(ABS(points)), 0) AS total
        FROM Loyalty_Transactions
        WHERE customer_id = ? AND transaction_type = 'REDEEMED'`,
       [customerId]
@@ -171,6 +171,67 @@ const CustomerModel = {
        VALUES (?, ?, 'REDEEMED')`,
       [customerId, points]
     );
+  },
+
+  async awardPoints(customerId, points) {
+    await pool.execute(
+      "UPDATE Customers SET loyalty_points = loyalty_points + ? WHERE id = ?",
+      [points, customerId]
+    );
+    await pool.execute(
+      `INSERT INTO Loyalty_Transactions (customer_id, points, transaction_type)
+       VALUES (?, ?, 'EARNED')`,
+      [customerId, points]
+    );
+  },
+
+  // ─── Global Loyalty Transactions (for CRM Loyalty tab) ───────
+  async getAllLoyaltyTransactions({ limit = 100, offset = 0 } = {}) {
+    const [rows] = await pool.query(
+      `SELECT
+         lt.id,
+         lt.points,
+         lt.transaction_type,
+         lt.transaction_date AS created_at,
+         c.id   AS customer_id,
+         c.name AS customer_name,
+         c.loyalty_points AS customer_current_points
+       FROM Loyalty_Transactions lt
+       JOIN Customers c ON c.id = lt.customer_id
+       ORDER BY lt.transaction_date DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+    return rows.map(r => ({
+      id:               r.id,
+      points:           r.transaction_type === "EARNED" ? Number(r.points) : -Number(r.points),
+      transaction_type: r.transaction_type,
+      created_at:       r.created_at,
+      customer: {
+        id:   r.customer_id,
+        name: r.customer_name,
+      },
+      balance_after: r.customer_current_points,
+    }));
+  },
+
+  async getLoyaltyStats() {
+    const [totals] = await pool.execute(
+      `SELECT
+         COUNT(DISTINCT customer_id) AS active_members,
+         COALESCE(SUM(CASE WHEN transaction_type = 'EARNED'   THEN ABS(points) ELSE 0 END), 0) AS total_issued,
+         COALESCE(SUM(CASE WHEN transaction_type = 'REDEEMED' THEN ABS(points) ELSE 0 END), 0) AS total_redeemed
+       FROM Loyalty_Transactions`
+    );
+    const [custTotal] = await pool.execute(
+      "SELECT COUNT(*) AS total FROM Customers WHERE is_active = TRUE"
+    );
+    return {
+      total_customers:       Number(custTotal[0].total),
+      active_members:        Number(totals[0].active_members),
+      total_points_issued:   Number(totals[0].total_issued),
+      total_points_redeemed: Number(totals[0].total_redeemed),
+    };
   },
 };
 
